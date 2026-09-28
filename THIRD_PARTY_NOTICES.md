@@ -9,7 +9,7 @@
 | ONNX Runtime Web 1.22.0 | npm 패키지 `dist/`의 파일 3개를 수정 없이 `vendor/ort/`에 포함 | Copyright (c) Microsoft Corporation | MIT → [`licenses/onnxruntime-MIT.txt`](licenses/onnxruntime-MIT.txt) |
 | 글꼴 Jua | Fontsource `@fontsource/jua` 5.3.0의 woff2를 `vendor/fonts/`에 포함 | Copyright 2018 The BM JUA Project Authors | SIL OFL 1.1 → [`licenses/Jua-OFL.txt`](licenses/Jua-OFL.txt) |
 | 글꼴 Noto Sans KR (400, 500) | Fontsource `@fontsource/noto-sans-kr` 5.3.0의 woff2를 `vendor/fonts/`에 포함 | Google Inc. | SIL OFL 1.1 → [`licenses/NotoSansKR-OFL.txt`](licenses/NotoSansKR-OFL.txt) |
-| 이야기 원전 (이솝우화, 탈무드) | 줄거리만 참고, 문장은 모두 자체 각색 | 원전은 퍼블릭 도메인 | — |
+| 이야기 원전 (탈무드, 이솝우화, 한국 전래동화, 영국 민담, 그림 형제, 안데르센, 페로, 세계 민담, 고사성어) | 줄거리만 참고, 문장은 모두 자체 각색. 시중 번역본·그림책·애니메이션(디즈니 등)의 문장·이름·설정은 쓰지 않음 | 원전은 퍼블릭 도메인 | — |
 
 ## Supertonic 3 모델 사용 조건 (Open RAIL-M 요약)
 - 상업적 이용 가능. 영구·무상·취소 불가 라이선스입니다(2조).
