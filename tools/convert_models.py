@@ -54,8 +54,10 @@ def to_fp16(src: Path, dst: Path):
 
 def to_int8(src: Path, dst: Path):
     from onnxruntime.quantization import QuantType, quantize_dynamic
-    # MatMul/Gemm 가중치만 8비트로(동적 양자화). Conv 는 32비트로 둠 → WASM에서 지원이 확실한 연산만 사용
-    quantize_dynamic(str(src), str(dst), weight_type=QuantType.QUInt8, op_types_to_quantize=['MatMul', 'Gemm'])
+    # MatMul/Gemm/Conv 가중치를 8비트로(동적 양자화).
+    # 반드시 부호 없는 8비트(QUInt8): 부호 있는 8비트(QInt8)의 ConvInteger 는 브라우저(onnxruntime-web 1.22.0)
+    # WASM·WebGPU 모두 "구현 없음"으로 안 열림. QUInt8 은 둘 다 정상(작은 모델로 확인, 오차 약 1%).
+    quantize_dynamic(str(src), str(dst), weight_type=QuantType.QUInt8, op_types_to_quantize=['MatMul', 'Gemm', 'Conv'])
 
 
 # ---------------------------------------------------------------- 합성 (앱의 tts.js 와 같은 순서)
@@ -144,6 +146,8 @@ def main():
     ap.add_argument('--src', type=Path, help='이미 받아 둔 tts 폴더(onnx/, voice_styles/ 포함)')
     ap.add_argument('--work', type=Path, default=Path('work'), help='작업 폴더')
     ap.add_argument('--steps', type=int, default=8)
+    ap.add_argument('--keep', nargs='*', default=[], choices=NAMES,
+                    help='8비트로 바꾸지 않고 32비트로 둘 파일(음질이 나쁠 때). 예: --keep vocoder')
     args = ap.parse_args()
 
     work = args.work
@@ -156,8 +160,16 @@ def main():
         shutil.copy(fp32 / name, out8 / name)
 
     for n in NAMES:
-        print(f'변환 중: {n}')
-        to_int8(fp32 / f'{n}.onnx', out8 / f'{n}.onnx')
+        if n in args.keep:
+            print(f'32비트 유지: {n}')
+            shutil.copy(fp32 / f'{n}.onnx', out8 / f'{n}.onnx')
+        else:
+            print(f'변환 중: {n}')
+            to_int8(fp32 / f'{n}.onnx', out8 / f'{n}.onnx')
+    print('\n파일 크기(MB)   32비트 → 8비트')
+    for n in NAMES:
+        a, b = (fp32 / f'{n}.onnx').stat().st_size / 1048576, (out8 / f'{n}.onnx').stat().st_size / 1048576
+        print(f'  {n:<20}{a:>8.1f} → {b:>7.1f}')
 
     print(f'\n같은 문장 합성 비교 (CPU, steps={args.steps}): "{TEST_TEXT}"')
     print(f'{"모델":<6}{"크기(MB)":>10}{"로딩(s)":>10}{"합성(s)":>10}{"음성(s)":>10}{"RTF":>8}   결과')
@@ -180,9 +192,10 @@ def main():
             print(f'{label:<6}{dir_mb(d):>10.1f}   실패: {type(e).__name__}: {str(e)[:200]}')
             print('       → 이 변환본은 CPU(= 브라우저 WASM)에서 안 돌 가능성이 큽니다. 올리지 마세요.')
 
-    make_export(src, out8, Path('export') / 'tts-int8', '8비트(INT8 동적 양자화, MatMul/Gemm 가중치만)')
+    kept = f', 32비트 유지: {", ".join(args.keep)}' if args.keep else ''
+    make_export(src, out8, Path('export') / 'tts-int8', f'8비트(INT8 동적 양자화, QUInt8, MatMul/Gemm/Conv 가중치{kept})')
     print('\n업로드 폴더: export/tts-int8')
-    print('test-fp32.wav 와 test-int8.wav 를 들어 보고 음질이 괜찮으면:')
+    print('test-fp32.wav 와 test-int8.wav 를 들어 보고 음질이 괜찮으면 (지직거리면 --keep vocoder 로 다시 실행):')
     print(f'  huggingface-cli upload {REPO} ./export/tts-int8 tts-int8')
 
 
