@@ -353,6 +353,9 @@ export class SupertonicTTS {
   // signal 이 abort 되면 아직 시작 전인 작업은 건너뜀(목소리·품질을 바꿨을 때 낡은 미리 합성이 줄을 막지 않도록).
   synth(text, { voice = 'F1', lang = 'ko', steps = 8, speed = 1.05, gap = 0.25, signal, onStart } = {}) {
     const job = this.lock.then(async () => {
+      // 앞 작업이 끝나면 곧바로(마이크로태스크로) 다음 작업이 시작돼서, 그 사이 도착한 취소 메시지가 처리될 틈이 없음.
+      // 한 번 이벤트 루프에 양보해 취소 메시지를 먼저 받은 뒤 확인함(워커에서 취소한 문장을 헛되이 합성하던 문제).
+      await new Promise((r) => setTimeout(r, 0));
       if (signal?.aborted) throw new DOMException('취소됨', 'AbortError');
       onStart?.();
       const t0 = performance.now();

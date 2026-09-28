@@ -85,7 +85,6 @@ let audioCtx = null;
 let source = null;
 // key → { p: Promise<Float32Array>, started: boolean }
 const audioCache = new Map();
-let prefetchCtl = new AbortController();
 
 /* ---------- 저장 ---------- */
 function loadUserStories() {
@@ -143,10 +142,13 @@ function keyFor(i) {
 /* ---------- 합성 캐시 ---------- */
 // 목소리·품질·이야기·위치가 바뀌면 아직 시작하지 않은 미리 합성을 버려서, 바뀐 설정이 곧바로 반영되게 함.
 // 이미 합성 중인 문장은 그대로 두어 같은 문장을 두 번 합성하지 않음.
-function cancelPending() {
-  prefetchCtl.abort();
-  for (const [k, e] of audioCache) if (!e.started) audioCache.delete(k);
-  prefetchCtl = new AbortController();
+// from 을 주면 from ~ from+LOOKAHEAD 문장은 버리지 않음(재생을 누를 때 미리 만들던 문장을 다시 만들지 않도록).
+function cancelPending(from = -1) {
+  const keep = new Set();
+  for (let k = 0; from >= 0 && k <= LOOKAHEAD && from + k < seq.length; k++) keep.add(keyFor(from + k));
+  for (const [k, e] of audioCache) {
+    if (!e.started && !keep.has(k)) { e.ctl.abort(); audioCache.delete(k); }
+  }
 }
 function audioFor(i) {
   const k = keyFor(i);
@@ -155,10 +157,10 @@ function audioFor(i) {
     const c = castOf(who);
     const node = sents[i];
     node?.classList.add('busy');
-    const entry = { started: false };
+    const entry = { started: false, ctl: new AbortController() };
     entry.p = tts.synth(text, {
       voice: c.voice, speed: c.speed, steps: Number(el.steps.value), lang: 'ko',
-      signal: prefetchCtl.signal, onStart: () => { entry.started = true; },
+      signal: entry.ctl.signal, onStart: () => { entry.started = true; },
     }).finally(() => node?.classList.remove('busy'));
     entry.p.catch(() => { if (audioCache.get(k) === entry) audioCache.delete(k); });
     audioCache.set(k, entry);
@@ -309,7 +311,7 @@ function renderFilter() {
 async function run(from) {
   const my = ++runId;
   stopAudio();
-  cancelPending();
+  cancelPending(from);
   playing = true;
   idx = from;
   el.hint.textContent = '';
@@ -371,7 +373,7 @@ function jump(i) {
   if (!story) return;
   i = Math.max(0, Math.min(seq.length - 1, i));
   if (playing) run(i);
-  else { idx = i; highlight(i); cancelPending(); warmup(i); }
+  else { idx = i; highlight(i); cancelPending(i); warmup(i); }
 }
 
 /* ---------- 렌더링 ---------- */
