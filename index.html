@@ -25,10 +25,25 @@
 <body>
   <header class="top">
     <button id="openShelf" class="shelf-btn" aria-controls="shelf" aria-expanded="false">📚 이야기 목록</button>
-    <h1>이야기 극장</h1>
+    <h1 id="homeTitle" role="button" tabindex="0" title="처음 표지로">이야기 극장</h1>
     <p id="engine" class="engine" aria-live="polite">음성 엔진 불러오는 중</p>
     <button id="aboutBtn" class="ai-badge" aria-haspopup="dialog" title="AI 목소리 안내">🤖 AI 목소리</button>
   </header>
+
+  <!-- 앱 표지: 들어올 때와 "이야기 극장"을 누를 때 -->
+  <section id="cover" class="cover" aria-label="이야기 극장 표지">
+    <div class="cover-book">
+      <div class="cover-deco" aria-hidden="true">🦊 🐢 🐯 🍎 👑 🐷</div>
+      <h2 class="cover-title">이야기 극장</h2>
+      <p id="coverSub" class="cover-sub">옛이야기를 목소리로 들려줘요</p>
+      <div id="coverToc" class="cover-toc" role="group" aria-label="모음 고르기"></div>
+      <div class="cover-actions">
+        <button id="coverOpen" class="cover-btn">📖 책 펼치기</button>
+        <button id="coverResume" class="cover-btn ghost-btn" hidden></button>
+      </div>
+      <p id="coverEngine" class="cover-engine" aria-live="polite"></p>
+    </div>
+  </section>
 
   <div class="layout">
     <aside id="shelf" class="shelf" aria-label="이야기 목록과 재생목록">

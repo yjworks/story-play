@@ -12,6 +12,9 @@ const USER_KEY = 'story-player:user-stories';
 const REPEAT_KEY = 'story-player:repeat';
 const PLAYLIST_KEY = 'story-player:playlist';
 const FILTER_KEY = 'story-player:filter';
+const LAST_KEY = 'story-player:last'; // 이어 읽기: { id, idx }
+// 이야기 표지 색 (모음 순서대로)
+const COVER_COLORS = ['#2f7d6d', '#4f7a2e', '#b5452f', '#3b5ca8', '#7a4a9e', '#b0306a', '#b8741a', '#2b6f8f', '#8a5a2b', '#5a6b2f'];
 const LOOKAHEAD = 2; // 재생 중 미리 합성해 둘 문장 수 (이야기를 고르면 첫 문장 + LOOKAHEAD 문장도 미리 합성)
 const NARRATION_PER_PARA = 3; // 해설 문장을 한 문단에 몇 개까지 이어 붙일지
 const GAP_MS = 250; // 문장 사이 쉼
@@ -105,10 +108,12 @@ function castOf(name) {
   return story.cast[name];
 }
 function buildSeq() {
+  // 맨 앞은 제목(표지에서 해설이 읽음), 이어서 본문, 끝에 마무리 질문
+  const title = { who: NARRATOR, text: story.title, ask: false, q: false, title: true };
   const body = story.lines.map(([who, text]) => ({ who, text, ask: false, q: false }));
   const outro = (story.outro?.length ? story.outro : DEFAULT_OUTRO)
     .map((text, k) => ({ who: NARRATOR, text, ask: true, q: k > 0 }));
-  return [...body, ...outro];
+  return [title, ...body, ...outro];
 }
 function keyFor(i) {
   const { who, text } = seq[i];
@@ -455,8 +460,14 @@ function renderBook() {
   let para = null;
   let count = 0;
   let askBox = null;
-  seq.forEach(({ who, text, ask, q }, i) => {
+  seq.forEach(({ who, text, ask, q, title }, i) => {
     castOf(who);
+    if (title) {
+      el.storyTitle.classList.add('sent');
+      sents.push(el.storyTitle);
+      units.push({ node: null, first: i, cover: true });
+      return;
+    }
     const s = document.createElement(ask ? 'p' : 'span');
     s.className = ask ? `sent${q ? ' q' : ''}` : 'sent';
     s.onclick = () => { if (!ready) return; ensureCtx(); run(i); };
@@ -513,11 +524,15 @@ function paginate(keepIdx = 0) {
     el.book.append(pg);
     pages.push(pg);
     el.page.classList.toggle('compact', pages.length > 1);
+    el.page.classList.toggle('cover-page', pages.length === 1);
     const top = el.book.getBoundingClientRect().top;
     cap = Math.max(200, window.innerHeight - top - transportH - tailH);
   };
   newPage();
+  let afterCover = false;
   units.forEach((u) => {
+    if (u.cover) { u.page = 0; afterCover = true; return; }
+    if (afterCover) { newPage(); afterCover = false; }
     if (u.ask && pg.childElementCount) newPage();
     pg.append(u.node);
     if (pg.offsetHeight > cap && pg.childElementCount > 1) {
@@ -542,10 +557,41 @@ function showPage(n) {
   curPage = Math.max(0, Math.min(pages.length - 1, n));
   pages.forEach((p, k) => { p.hidden = k !== curPage; });
   el.page.classList.toggle('compact', curPage > 0);
-  el.pgNum.textContent = `${curPage + 1} / ${pages.length} 쪽`;
+  el.page.classList.toggle('cover-page', curPage === 0);
+  el.pgNum.textContent = curPage === 0 ? '표지' : `${curPage} / ${pages.length - 1} 쪽`;
   el.pgPrev.disabled = curPage === 0;
   el.pgNext.disabled = curPage === pages.length - 1;
 }
+/* ---------- 책장 넘김 효과 ---------- */
+// 지금 쪽을 복제해 위에 겹쳐 두고(유령), 실제 쪽은 바로 새 내용으로 바꾼 뒤
+//  앞으로: 유령이 왼쪽 모서리를 축으로 넘어가며 사라짐 (표지에서 넘기면 표지가 열리는 모양)
+//  뒤로: 새 쪽이 왼쪽에서 넘어 들어와 유령을 덮음
+//  새 책: 유령은 옆으로 치워지고 새 표지가 들어옴
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+let flipTimer = 0;
+function clearFlip() {
+  clearTimeout(flipTimer);
+  document.querySelectorAll('.flip-ghost').forEach((g) => g.remove());
+  el.page.classList.remove('flip-in', 'new-book');
+}
+function flip(kind, update) {
+  clearFlip();
+  const r = el.page.getBoundingClientRect();
+  if (reduceMotion() || r.width === 0 || r.bottom < 0 || r.top > window.innerHeight) { update(); return; }
+  const ghost = el.page.cloneNode(true);
+  ghost.removeAttribute('id');
+  ghost.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+  ghost.classList.add('flip-ghost');
+  Object.assign(ghost.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, minHeight: '0' });
+  document.body.append(ghost);
+  update();
+  void el.page.offsetWidth; // 애니메이션 다시 시작
+  if (kind === 'fwd') ghost.classList.add('fwd');
+  else if (kind === 'back') el.page.classList.add('flip-in');
+  else { ghost.classList.add('away'); el.page.classList.add('new-book'); }
+  flipTimer = setTimeout(clearFlip, 700);
+}
+
 function firstOfPage(n) {
   return pageOf.indexOf(n);
 }
@@ -557,12 +603,29 @@ function turnPage(d) {
   if (playing) { run(i); return; }
   idx = i;
   highlight(-1);
-  showPage(n);
+  flip(d > 0 ? 'fwd' : 'back', () => showPage(n));
   el.progress.textContent = `${i + 1} / ${seq.length}`;
+  saveLast();
   cancelPending();
   warmup(i);
 }
 el.pgPrev.onclick = () => turnPage(-1);
+el.storyTitle.onclick = () => {
+  if (curPage > 0) { turnPage(-curPage); return; }
+  if (ready) { ensureCtx(); run(0); }
+};
+// 손가락으로 좌우로 밀어 쪽 넘기기
+let swipe = null;
+el.page.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') swipe = { x: e.clientX, y: e.clientY, t: Date.now() }; });
+el.page.addEventListener('pointerup', (e) => {
+  if (!swipe) return;
+  const dx = e.clientX - swipe.x;
+  const dy = e.clientY - swipe.y;
+  const quick = Date.now() - swipe.t < 700;
+  swipe = null;
+  if (quick && Math.abs(dx) > 60 && Math.abs(dy) < 50) turnPage(dx < 0 ? 1 : -1);
+});
+el.page.addEventListener('pointercancel', () => { swipe = null; });
 el.pgNext.onclick = () => turnPage(1);
 let resizeTimer = 0;
 const repaginate = () => {
@@ -593,7 +656,11 @@ function highlight(i) {
   sents.forEach((s, k) => s.classList.toggle('now', k === i));
   el.progress.textContent = `${i >= 0 ? i + 1 : 0} / ${seq.length}`;
   if (i < 0) return;
-  if (pageOf[i] !== curPage) showPage(pageOf[i]);
+  if (pageOf[i] !== curPage) {
+    const to = pageOf[i];
+    flip(to > curPage ? 'fwd' : 'back', () => showPage(to));
+  }
+  saveLast();
   sents[i]?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 function renderPlayState() {
@@ -619,7 +686,8 @@ async function syncWakeLock() {
   } catch (_) { /* 절전 모드 등으로 거절될 수 있음 */ }
 }
 document.addEventListener('visibilitychange', syncWakeLock);
-function selectStory(id, pos = -1) {
+function selectStory(id, pos = -1, { anim = true } = {}) {
+  if (anim && story && story.id !== id) { flip('book', () => selectStory(id, pos, { anim: false })); return; }
   pause();
   cancelPending();
   story = stories.find((s) => s.id === id);
@@ -628,6 +696,7 @@ function selectStory(id, pos = -1) {
   idx = 0;
   el.storyTitle.textContent = story.title;
   el.storySource.textContent = story.source;
+  el.page.style.setProperty('--cv', COVER_COLORS[Math.max(0, sources().indexOf(story.source)) % COVER_COLORS.length]);
   renderFilter();
   renderStoryList();
   renderPlaylist();
@@ -639,7 +708,18 @@ function selectStory(id, pos = -1) {
   highlight(-1);
   el.hint.textContent = ready ? '재생을 누르거나, 듣고 싶은 문장을 눌러 주세요.' : '목소리를 준비하는 동안 먼저 읽어 보세요.';
   renderPlayState();
+  saveLast();
   warmup(0);
+}
+function saveLast() {
+  if (!story) return;
+  try { localStorage.setItem(LAST_KEY, JSON.stringify({ id: story.id, idx })); } catch (_) { /* ignore */ }
+}
+function loadLast() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAST_KEY) || 'null');
+    return v && stories.some((s) => s.id === v.id) ? v : null;
+  } catch (_) { return null; }
 }
 
 /* ---------- 내 이야기 넣기 ---------- */
@@ -682,6 +762,7 @@ el.steps.onchange = () => {
   else { cancelPending(); warmup(idx); }
 };
 document.addEventListener('keydown', (e) => {
+  if (!cover.hidden) return; // 표지가 떠 있으면 재생 키 무시
   if (e.code === 'Escape') closeShelf();
   if (e.target.closest('input, textarea, select, dialog, summary')) return;
   if (e.code === 'Space') { e.preventDefault(); el.play.click(); }
@@ -691,8 +772,64 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'PageDown') turnPage(1);
 });
 
+/* ---------- 앱 표지 (이야기 극장) ---------- */
+// 들어올 때와 "이야기 극장"을 누를 때 보여 줌. 표지의 버튼을 누르는 순간 오디오도 깨워 둠(브라우저 자동 재생 정책).
+const cover = $('cover');
+function renderCover() {
+  $('coverSub').textContent = `옛이야기 ${stories.length}편을 인물마다 다른 목소리로 들려줘요`;
+  $('coverToc').replaceChildren(...sources().map((src) => {
+    const b = document.createElement('button');
+    b.append(src, Object.assign(document.createElement('span'), { textContent: stories.filter((s) => s.source === src).length }));
+    b.onclick = () => {
+      srcFilter = src;
+      try { localStorage.setItem(FILTER_KEY, src); } catch (_) { /* ignore */ }
+      openBook(stories.find((s) => s.source === src).id, 0);
+      if (matchMedia('(max-width: 1100px)').matches) openShelf();
+    };
+    return b;
+  }));
+  const last = loadLast();
+  const resume = $('coverResume');
+  const lastStory = last && stories.find((s) => s.id === last.id);
+  resume.hidden = !lastStory || (last.idx === 0 && lastStory === stories[0]);
+  if (lastStory) resume.textContent = `▶ 이어 읽기 · ${lastStory.title}`;
+  resume.onclick = () => openBook(last.id, last.idx);
+}
+function showCover() {
+  pause();
+  closeShelf();
+  renderCover();
+  cover.classList.remove('opening');
+  cover.hidden = false;
+}
+function openBook(id, at = 0) {
+  ensureCtx();
+  selectStory(id, -1, { anim: false });
+  if (at > 0 && at < seq.length) {
+    idx = at;
+    showPage(pageOf[at]);
+    el.progress.textContent = `${at + 1} / ${seq.length}`;
+    cancelPending();
+    warmup(at);
+  }
+  if (reduceMotion()) { cover.hidden = true; return; }
+  cover.classList.add('opening');
+  setTimeout(() => { cover.hidden = true; cover.classList.remove('opening'); }, 900);
+}
+$('coverOpen').onclick = () => {
+  srcFilter = 'all';
+  try { localStorage.setItem(FILTER_KEY, 'all'); } catch (_) { /* ignore */ }
+  openBook(stories[0].id, 0);
+};
+$('homeTitle').onclick = showCover;
+$('homeTitle').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showCover(); } };
+// 엔진 상태를 표지에도 보여 줌
+new MutationObserver(() => { $('coverEngine').textContent = el.engine.textContent; })
+  .observe(el.engine, { childList: true, characterData: true, subtree: true });
+
 /* ---------- 시작 ---------- */
-selectStory(stories[0].id);
+selectStory((loadLast() || { id: stories[0].id }).id, -1, { anim: false });
+showCover();
 tts.load((msg) => { el.engine.textContent = msg; })
   .then(async () => {
     await tts.style(castOf(seq[0].who).voice);

@@ -268,3 +268,80 @@ button { cursor: pointer; }
 .editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+
+/* ================= 표지와 책장 넘김 ================= */
+.top h1[role="button"] { cursor: pointer; }
+
+/* 앱 표지 (이야기 극장) */
+.cover {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px;
+  background: var(--paper); perspective: 2000px;
+}
+.cover-book {
+  width: min(560px, 92vw); min-height: min(720px, 86vh); padding: clamp(24px, 5vw, 48px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center;
+  color: #fffdf8; border-radius: 8px 22px 22px 8px;
+  background: linear-gradient(135deg, #e7a72e, #c9851a);
+  box-shadow: inset 16px 0 22px -12px rgba(0, 0, 0, 0.35), 0 18px 40px rgba(60, 40, 10, 0.35);
+  transform-origin: left center;
+}
+.cover-deco { font-size: clamp(1.8rem, 6vw, 2.6rem); letter-spacing: 0.1em; }
+.cover-title { margin: 0; font-family: var(--font-title); font-weight: 400; font-size: clamp(3rem, 12vw, 5rem); line-height: 1.1; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.15); }
+.cover-sub { margin: 0; font-size: 1.15rem; font-weight: 500; }
+.cover-toc { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0; }
+.cover-toc button {
+  border: 0; border-radius: 999px; padding: 6px 14px; background: rgba(255, 253, 248, 0.92); color: #2a2f3d;
+  font-family: var(--font-title); font-size: 1.05rem;
+}
+.cover-toc button span { margin-left: 5px; font-family: var(--font-body); font-size: 0.75rem; color: #6b7185; }
+.cover-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; }
+.cover-btn {
+  border: 0; border-radius: 999px; padding: 12px 26px; font-family: var(--font-title); font-size: 1.35rem;
+  background: #fffdf8; color: #2a2f3d; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+}
+.cover-btn.ghost-btn { background: transparent; color: #fffdf8; box-shadow: inset 0 0 0 2px rgba(255, 253, 248, 0.85); font-size: 1.1rem; }
+.cover-engine { margin: 8px 0 0; font-size: 0.85rem; opacity: 0.85; min-height: 1.2em; }
+.cover.opening { animation: cover-fade 0.9s ease forwards; }
+.cover.opening .cover-book { animation: cover-open 0.9s ease-in forwards; }
+@keyframes cover-open { to { transform: rotateY(-100deg); } }
+@keyframes cover-fade { 60% { background: var(--paper); } to { background: transparent; } }
+
+/* 이야기 표지 (첫 쪽) */
+.page.cover-page {
+  background: linear-gradient(135deg, var(--cv, #2f7d6d), color-mix(in srgb, var(--cv, #2f7d6d) 72%, black));
+  color: #fffdf8;
+  box-shadow: inset 16px 0 22px -12px rgba(0, 0, 0, 0.35), 0 10px 26px rgba(40, 30, 10, 0.25);
+}
+.page.cover-page .page-head { flex-direction: column; flex: 1; justify-content: center; gap: 14px; margin: 0; }
+.page.cover-page .scene { flex: none; width: min(560px, 100%); max-width: 560px; max-height: 42vh; box-shadow: 0 0 0 6px #fffdf8, 0 10px 24px rgba(0, 0, 0, 0.25); }
+.page.cover-page .head-text { flex: none; }
+.page.cover-page .source { color: #fffdf8; opacity: 0.85; font-size: 1rem; letter-spacing: 0.05em; }
+.page.cover-page .title { font-size: clamp(2.6rem, 7vw, 4rem); text-shadow: 0 3px 0 rgba(0, 0, 0, 0.18); }
+.page.cover-page .legend { gap: 6px 8px; }
+.page.cover-page .legend span { background: #fffdf8; border-radius: 999px; padding: 2px 12px; }
+.page.cover-page .voices summary { color: #fffdf8; opacity: 0.85; }
+.page.cover-page .book { flex: 0 0 auto; }
+.page.cover-page .pg-btn { background: rgba(255, 253, 248, 0.92); border-color: transparent; color: #2a2f3d; }
+.page.cover-page .pg-num, .page.cover-page .hint-line { color: #fffdf8; opacity: 0.9; }
+.title.sent { cursor: pointer; }
+.title.now { background: rgba(255, 253, 248, 0.22); border-radius: 12px; }
+.page.compact .title { cursor: pointer; text-decoration: underline dotted 2px; text-underline-offset: 6px; }
+
+/* 책장 넘김 */
+.page { position: relative; touch-action: pan-y; }
+.flip-ghost { position: fixed !important; z-index: 5; margin: 0 !important; pointer-events: none; transform-origin: left center; }
+.flip-ghost.fwd { animation: flip-out 0.55s ease-in forwards; }
+.flip-ghost.fwd::after, .page.flip-in::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.18));
+  animation: flip-shade 0.55s ease-in forwards;
+}
+.page.flip-in { z-index: 6; transform-origin: left center; animation: flip-in 0.55s ease-out; }
+.page.new-book { animation: new-book 0.6s ease-out; }
+.flip-ghost.away { animation: book-away 0.45s ease-in forwards; }
+@keyframes flip-out { from { transform: perspective(2600px) rotateY(0); } to { transform: perspective(2600px) rotateY(-96deg); } }
+@keyframes flip-in { from { transform: perspective(2600px) rotateY(-96deg); } to { transform: perspective(2600px) rotateY(0); } }
+@keyframes flip-shade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes new-book { from { opacity: 0; transform: translateX(40px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes book-away { to { opacity: 0; transform: translateX(-60px) scale(0.94); } }
+.book .pg { animation: none; } /* 쪽 넘김은 flip 효과가 맡음 */
