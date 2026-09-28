@@ -9,8 +9,11 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (new URL(req.url).origin !== self.location.origin) return;
   if (req.cache === 'only-if-cached' && req.mode !== 'same-origin') return;
+  // 앱 파일은 매번 서버에 바뀌었는지 물어봄(no-cache: 안 바뀌었으면 304로 짧게 끝남).
+  // GitHub Pages 기본 캐시(10분) 때문에 업데이트 후에도 예전 tts.js 가 쓰이는 일을 막음.
+  const fresh = req.method === 'GET' ? new Request(req, { cache: 'no-cache' }) : req;
   e.respondWith(
-    fetch(req).then((res) => {
+    fetch(fresh).then((res) => {
       if (res.status === 0) return res;
       const headers = new Headers(res.headers);
       headers.set('Cross-Origin-Opener-Policy', 'same-origin');
