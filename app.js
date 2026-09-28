@@ -33,8 +33,8 @@ const LAST_KEY = 'story-player:last'; // 이어 읽기: { id, idx }
 const COVER_COLORS = ['#2f7d6d', '#4f7a2e', '#b5452f', '#3b5ca8', '#7a4a9e', '#b0306a', '#b8741a', '#2b6f8f', '#8a5a2b', '#5a6b2f'];
 const LOOKAHEAD = 2; // 재생 중 미리 합성해 둘 문장 수 (이야기를 고르면 첫 문장 + LOOKAHEAD 문장도 미리 합성)
 const NARRATION_PER_PARA = 3; // 해설 문장을 한 문단에 몇 개까지 이어 붙일지
-const GAP_MS = 250; // 문장 사이 쉼
-const THINK_MS = 4000; // 질문 뒤 아이가 생각할 시간
+const GAP_MS = 500; // 문장 사이 쉼
+const THINK_MS = 7000; // 질문 뒤 아이가 생각할 시간
 const NEXT_STORY_MS = 1500; // 반복·이어 듣기에서 다음 이야기 전 쉼
 const DEFAULT_OUTRO = ['이야기 잘 들었나요?', '이야기에서 가장 기억에 남는 장면은 무엇인가요? 왜 그런가요?'];
 
