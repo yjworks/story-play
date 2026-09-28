@@ -31,7 +31,8 @@ const FILTER_KEY = 'story-player:filter';
 const LAST_KEY = 'story-player:last'; // 이어 읽기: { id, idx }
 // 이야기 표지 색 (모음 순서대로)
 const COVER_COLORS = ['#2f7d6d', '#4f7a2e', '#b5452f', '#3b5ca8', '#7a4a9e', '#b0306a', '#b8741a', '#2b6f8f', '#8a5a2b', '#5a6b2f'];
-const LOOKAHEAD = 2; // 재생 중 미리 합성해 둘 문장 수 (이야기를 고르면 첫 문장 + LOOKAHEAD 문장도 미리 합성)
+const LOOKAHEAD = 4; // 재생 중 미리 합성해 둘 문장 수 (이야기를 고르면 첫 문장 + LOOKAHEAD 문장도 미리 합성)
+// 화면을 끄거나 다른 앱으로 가면 휴대폰이 계산을 늦춰서, 앞서 만들어 둔 문장이 많을수록 끊김이 늦게 옴
 const NARRATION_PER_PARA = 3; // 해설 문장을 한 문단에 몇 개까지 이어 붙일지
 const GAP_MS = 250; // 문장 사이 쉼
 const THINK_MS = 7000; // 질문 뒤 아이가 생각할 시간
@@ -181,9 +182,12 @@ function ensureCtx() {
 function stopAudio() {
   if (source) { source.onended = null; try { source.stop(); } catch (_) { /* ended */ } source = null; }
 }
-function playPCM(pcm) {
+// tail: 소리 뒤에 붙일 쉼(ms). 타이머(setTimeout)로 기다리지 않고 소리 안에 무음으로 넣음 →
+// 화면이 꺼져 타이머가 느려져도(백그라운드에서 최대 1초 단위) 쉼 길이가 그대로 유지됨
+function playPCM(pcm, tail = 0) {
   const ctx = ensureCtx();
-  const buf = ctx.createBuffer(1, pcm.length, tts.sampleRate);
+  const pad = Math.floor((tail / 1000) * tts.sampleRate);
+  const buf = ctx.createBuffer(1, pcm.length + pad, tts.sampleRate);
   buf.copyToChannel(pcm, 0);
   return new Promise((resolve) => {
     source = ctx.createBufferSource();
@@ -338,9 +342,7 @@ async function run(from) {
     if (my !== runId) return;
     const waited = performance.now() - t0;
     if (waited > 50) console.info(`[player] ${idx + 1}번째 문장 대기 ${(waited / 1000).toFixed(2)}s (끊김)`);
-    await playPCM(pcm);
-    if (my !== runId) return;
-    await wait(seq[idx].q ? THINK_MS : GAP_MS);
+    await playPCM(pcm, seq[idx].q ? THINK_MS : GAP_MS);
     if (my !== runId) return;
     idx += 1;
   }
@@ -711,7 +713,10 @@ async function syncWakeLock() {
     }
   } catch (_) { /* 절전 모드 등으로 거절될 수 있음 */ }
 }
-document.addEventListener('visibilitychange', syncWakeLock);
+document.addEventListener('visibilitychange', () => {
+  console.info(`[player] 화면 ${document.visibilityState === 'visible' ? '돌아옴' : '가려짐(화면 끔·다른 앱)'}`);
+  syncWakeLock();
+});
 function selectStory(id, pos = -1, { anim = true } = {}) {
   if (anim && story && story.id !== id) { flip('book', () => selectStory(id, pos, { anim: false })); return; }
   pause();
