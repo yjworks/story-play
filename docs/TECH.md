@@ -32,7 +32,7 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 - 빌드 없이 파일을 그대로 올리도록 `.nojekyll`을 두었습니다.
 - 주소: https://yjworks.github.io/story-play/
 - `assets/`에 모델을 자체 호스팅하면 함께 배포됩니다. 파일당 100MB 제한이 있습니다.
-- GitHub Pages는 COOP/COEP 헤더를 줄 수 없어 `crossOriginIsolated`가 false입니다. 그래서 WASM으로 넘어가면 스레드 1개로 동작합니다. WebGPU 경로는 영향이 없습니다.
+- GitHub Pages는 COOP/COEP 헤더를 줄 수 없습니다. 그래서 서비스 워커 `coi-sw.js`가 같은 사이트 파일의 응답에 이 헤더를 붙입니다. 이렇게 하면 `crossOriginIsolated`가 true가 되고, WASM이 스레드를 최대 4개 씁니다(`tts.js` `numThreads`). 첫 방문 때는 한 번 자동으로 새로고침됩니다(`index.html` 머리의 등록 스크립트). HF 모델은 CORS로 받으므로 COEP에 막히지 않습니다. 진단 로그에서 `threads=4, crossOriginIsolated=true`로 확인할 수 있습니다. 서비스 워커를 못 쓰면(비보안 접속 등) 스레드 1개로 동작합니다.
 
 ## 모델
 실행할 때 아래 위치를 차례로 시도하고, 파일이 없거나 구성이 다르면 다음 위치로 넘어갑니다. 실제로 쓰는 위치는 상단 문구(`준비 완료 (WebGPU · edge-lab)`)와 콘솔 `[tts] 모델 위치:`에 나옵니다.

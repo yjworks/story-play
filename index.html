@@ -18,6 +18,18 @@
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
+  <script>
+    // 휴대폰(WebGPU 없음)에서 WASM이 CPU 여러 코어를 쓰도록 교차 출처 격리를 켬(coi-sw.js). 처음 한 번만 자동 새로고침.
+    (function () {
+      if (window.crossOriginIsolated || !('serviceWorker' in navigator) || !window.isSecureContext) return;
+      navigator.serviceWorker.register('coi-sw.js').then(function () {
+        if (sessionStorage.getItem('coi-reloaded')) return;
+        var reload = function () { sessionStorage.setItem('coi-reloaded', '1'); location.reload(); };
+        if (navigator.serviceWorker.controller) reload();
+        else navigator.serviceWorker.addEventListener('controllerchange', reload);
+      }).catch(function () {});
+    })();
+  </script>
   <link rel="stylesheet" href="vendor/fonts/fonts.css">
   <link rel="modulepreload" href="vendor/ort/ort.webgpu.min.mjs">
   <link rel="stylesheet" href="style.css">
