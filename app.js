@@ -50,7 +50,7 @@ const DEFAULT_OUTRO_EN = ['Did you like the story?', 'What part did you like bes
 const UI = {
   ko: {
     shelf: '📚 이야기 목록', app: '이야기 극장', toCover: '처음 표지로', ai: '🤖 AI 목소리', aiTitle: 'AI 목소리 안내',
-    langBtn: 'A English', langTitle: '영어(학습용)로 바꾸기', coverLang: 'A 영어로 듣기 (학습용)',
+    langBtn: 'A English', langTitle: '영어로 바꾸기', coverLang: 'A 영어로 듣기',
     open: '📖 책 펼치기', close: '닫기', playlist: '재생목록', plPlay: '▶ 목록 재생', plClear: '비우기',
     plEmpty: '이야기 옆 ＋를 누르면 여기에 담겨요.', plAddShown: '아래 목록 모두 담기', choose: '이야기 고르기',
     voices: '목소리 바꾸기', pgPrev: '◀ 앞 쪽', pgNext: '다음 쪽 ▶', repeat: '반복', rOff: '반복 안 함', rOne: '한 편 반복',
@@ -80,7 +80,7 @@ const UI = {
     nextStory: 'Next story!', end: 'The end! Press play to hear it again.', pic: 'picture', voiceOf: 'voice',
     hear: 'Listen', think: 'Let’s think!', cover: 'Cover', page: (a, b) => `Page ${a} / ${b}`,
     tapHint: 'Press play, or tap a sentence to hear it.', readFirst: 'Read first while the voice gets ready.',
-    coverSub: (n) => `${n} stories in easy English`, resume: (t) => `▶ Keep reading · ${t}`,
+    coverSub: (n) => `${n} stories in English`, resume: (t) => `▶ Keep reading · ${t}`,
     ready: (b) => `Ready (${b})`, synthFail: (m) => `Could not make the voice: ${m}`,
     loadFail: 'Could not load the voice engine (model files)', loadFailMsg: (m) => `Could not load the voice engine: ${m}`,
     cast: 'Characters', pages: 'Turn pages', controls: 'Player controls', loading: 'Loading the voice engine…',
