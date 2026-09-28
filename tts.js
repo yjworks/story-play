@@ -11,7 +11,7 @@ ort.env.wasm.numThreads = self.crossOriginIsolated
 //  1) ./assets            자체 호스팅(있을 때만)
 //  2) edge-lab            leeyunjai/edge-lab 저장소의 tts/ 폴더
 //  3) 공식 아카이브        supertone-oss-archive/supertonic-3 고정 리비전
-// 주소 뒤에 ?model=계정/저장소[@리비전][/하위/폴더] 를 붙이면 그 위치만 씀. 예: ?model=leeyunjai/edge-lab@main/tts
+// 주소 뒤에 ?model=계정/저장소[@리비전][/하위/폴더] 를 붙이면 그 위치를 가장 먼저 시도. 예: ?model=leeyunjai/edge-lab@main/tts
 // 각 위치 안의 구성은 두 가지를 모두 받음: <위치>/onnx/*.onnx 또는 <위치>/*.onnx (목소리는 <위치>/voice_styles/*.json)
 const hf = (repo, rev, path = '') => `https://huggingface.co/${repo}/resolve/${rev}${path ? `/${path}` : ''}`;
 const EDGE_LAB = { name: 'edge-lab', base: hf('leeyunjai/edge-lab', 'main', 'tts') };
@@ -24,8 +24,10 @@ const LOCAL = { name: '자체 호스팅', base: './assets', local: true };
 function modelSources() {
   const q = new URLSearchParams(location.search).get('model');
   const m = q?.match(/^([\w.-]+\/[\w.-]+)(?:@([\w.-]+))?(?:\/([\w./-]+))?$/);
-  if (m) return [{ name: q, base: hf(m[1], m[2] || 'main', m[3] || '') }];
-  return [LOCAL, EDGE_LAB, OFFICIAL];
+  const list = [LOCAL, EDGE_LAB, OFFICIAL];
+  // ?model= 로 지정한 위치를 먼저 시도하고, 실패하면 기본 후보로 넘어감
+  if (m) list.unshift({ name: q, base: hf(m[1], m[2] || 'main', m[3] || '') });
+  return list;
 }
 const CACHE_NAME = 'supertonic3-aafc6e3';
 

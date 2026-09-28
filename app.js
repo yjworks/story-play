@@ -33,7 +33,9 @@ const shown = (t) => t.replace(TAG_RE, ' ').replace(/\s+/g, ' ').trim();
 const $ = (id) => document.getElementById(id);
 const el = {
   engine: $('engine'), storyList: $('storyList'), scene: $('scene'), storyTitle: $('storyTitle'),
-  storySource: $('storySource'), legend: $('castLegend'), book: $('book'), ask: $('ask'), hint: $('hint'),
+  storySource: $('storySource'), legend: $('castLegend'), book: $('book'), hint: $('hint'), page: $('page'),
+  pgPrev: $('pgPrev'), pgNext: $('pgNext'), pgNum: $('pgNum'), voices: $('voices'), pager: document.querySelector('.pager'),
+  shelf: $('shelf'), openShelf: $('openShelf'), closeShelf: $('closeShelf'), backdrop: $('shelfBackdrop'),
   castList: $('castList'), repeat: $('repeat'),
   playlist: $('playlist'), plCount: $('plCount'), plEmpty: $('plEmpty'), plPlay: $('plPlay'), plClear: $('plClear'),
   play: $('playBtn'), prev: $('prevBtn'), next: $('nextBtn'), steps: $('steps'), progress: $('progress'),
@@ -48,6 +50,10 @@ let playlist = loadPlaylist(); // 재생목록: 이야기 id 배열 (같은 이�
 let plPos = -1; // 지금 재생목록의 몇 번째를 듣는 중인지 (-1: 재생목록 밖)
 let seq = []; // 읽을 순서: 본문 + 마무리 질문. { who, text, ask, q }
 let sents = []; // 문장 번호 → 화면의 <span>/<p>
+let units = []; // 쪽을 나누는 단위(문단, 질문 상자): { node, first, ask }
+let pages = []; // 쪽 <div>
+let pageOf = []; // 문장 번호 → 쪽 번호
+let curPage = 0;
 let idx = 0;
 let playing = false;
 let runId = 0;
@@ -176,6 +182,7 @@ function nextStep() {
 function playFromList(pos) {
   if (!ready || !playlist[pos]) return;
   ensureCtx();
+  closeShelf();
   selectStory(playlist[pos], pos);
   run(0);
 }
@@ -320,7 +327,7 @@ function renderStoryList() {
     const t = document.createElement('span'); t.className = 's-title'; t.textContent = s.title;
     const src = document.createElement('span'); src.className = 's-src'; src.textContent = s.source;
     b.append(pic, t, src);
-    b.onclick = () => selectStory(s.id);
+    b.onclick = () => { selectStory(s.id); closeShelf(); };
     const add = document.createElement('button');
     add.className = 'add';
     const inList = playlist.includes(s.id);
@@ -411,13 +418,13 @@ function renderCast() {
   }));
 }
 // 그림책처럼: 해설은 문단으로 이어 쓰고, 인물의 말은 따옴표와 인물 글씨 색으로 한 문단씩.
-// 마무리 질문은 "생각해 볼까요?" 상자에.
+// 마무리 질문은 마지막 쪽의 "생각해 볼까요?" 상자에.
 function renderBook() {
   sents = [];
-  const paras = [];
-  const asks = [];
+  units = [];
   let para = null;
   let count = 0;
+  let askBox = null;
   seq.forEach(({ who, text, ask, q }, i) => {
     castOf(who);
     const s = document.createElement(ask ? 'p' : 'span');
@@ -425,15 +432,23 @@ function renderBook() {
     s.onclick = () => { if (!ready) return; ensureCtx(); run(i); };
     sents.push(s);
     if (ask) {
+      if (!askBox) {
+        askBox = document.createElement('section');
+        askBox.className = 'ask';
+        const h = document.createElement('h3');
+        h.textContent = '생각해 볼까요?';
+        askBox.append(h);
+        units.push({ node: askBox, first: i, ask: true });
+      }
       s.textContent = shown(text);
-      asks.push(s);
+      askBox.append(s);
       return;
     }
     const talk = who !== NARRATOR;
     if (talk || !para || para.classList.contains('talk') || count >= NARRATION_PER_PARA) {
       para = document.createElement('p');
       if (talk) para.className = 'talk';
-      paras.push(para);
+      units.push({ node: para, first: i, ask: false });
       count = 0;
     } else {
       para.append(' ');
@@ -447,14 +462,108 @@ function renderBook() {
     s.textContent = talk ? `“${shown(text)}”` : shown(text);
     para.append(s);
   });
-  el.book.replaceChildren(...paras);
-  el.ask.replaceChildren(...asks);
+  paginate(0);
 }
+// 한 화면에 한 쪽: 재생바 위까지 들어가는 만큼 문단을 담고 넘치면 다음 쪽으로.
+// 첫 쪽은 삽화와 제목이 있어 짧고, 둘째 쪽부터는 제목을 한 줄로 줄여 더 많이 담음. 질문 상자는 늘 새 쪽.
+function paginate(keepIdx = 0) {
+  const scrollY0 = window.scrollY;
+  window.scrollTo(0, 0);
+  el.book.replaceChildren();
+  pages = [];
+  pageOf = [];
+  const transportH = document.querySelector('.transport').offsetHeight;
+  const tailH = el.pager.offsetHeight + el.hint.offsetHeight + 40;
+  let pg = null;
+  let cap = 0;
+  const newPage = () => {
+    if (pg) pg.hidden = true;
+    pg = document.createElement('div');
+    pg.className = 'pg';
+    el.book.append(pg);
+    pages.push(pg);
+    el.page.classList.toggle('compact', pages.length > 1);
+    const top = el.book.getBoundingClientRect().top;
+    cap = Math.max(200, window.innerHeight - top - transportH - tailH);
+  };
+  newPage();
+  units.forEach((u) => {
+    if (u.ask && pg.childElementCount) newPage();
+    pg.append(u.node);
+    if (pg.offsetHeight > cap && pg.childElementCount > 1) {
+      u.node.remove();
+      newPage();
+      pg.append(u.node);
+    }
+    u.page = pages.length - 1;
+  });
+  units.forEach((u, k) => {
+    const end = k + 1 < units.length ? units[k + 1].first : seq.length;
+    for (let i = u.first; i < end; i++) pageOf[i] = u.page;
+  });
+  showPage(pageOf[keepIdx] ?? 0);
+  // 책 높이를 화면(재생바 위까지)에 맞춰 고정 → 쪽마다 버튼 위치가 같음
+  el.page.style.minHeight = '';
+  const pageTop = el.page.getBoundingClientRect().top;
+  el.page.style.minHeight = `${Math.max(0, window.innerHeight - pageTop - transportH - 12)}px`;
+  window.scrollTo(0, Math.min(scrollY0, document.documentElement.scrollHeight));
+}
+function showPage(n) {
+  curPage = Math.max(0, Math.min(pages.length - 1, n));
+  pages.forEach((p, k) => { p.hidden = k !== curPage; });
+  el.page.classList.toggle('compact', curPage > 0);
+  el.pgNum.textContent = `${curPage + 1} / ${pages.length} 쪽`;
+  el.pgPrev.disabled = curPage === 0;
+  el.pgNext.disabled = curPage === pages.length - 1;
+}
+function firstOfPage(n) {
+  return pageOf.indexOf(n);
+}
+// 쪽 넘기기: 재생 중이면 그 쪽 첫 문장부터 읽고, 멈춰 있으면 다음 재생 위치만 옮김
+function turnPage(d) {
+  const n = curPage + d;
+  if (n < 0 || n >= pages.length) return;
+  const i = firstOfPage(n);
+  if (playing) { run(i); return; }
+  idx = i;
+  highlight(-1);
+  showPage(n);
+  el.progress.textContent = `${i + 1} / ${seq.length}`;
+  cancelPending();
+  warmup(i);
+}
+el.pgPrev.onclick = () => turnPage(-1);
+el.pgNext.onclick = () => turnPage(1);
+let resizeTimer = 0;
+const repaginate = () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (story) paginate(playing ? idx : firstOfPage(curPage)); }, 200);
+};
+window.addEventListener('resize', repaginate);
+el.voices.addEventListener('toggle', repaginate);
+document.fonts?.ready.then(repaginate);
+
+/* ---------- 이야기 목록 서랍 (좁은 화면) ---------- */
+function openShelf() {
+  el.shelf.classList.add('open');
+  el.backdrop.hidden = false;
+  el.openShelf.setAttribute('aria-expanded', 'true');
+}
+function closeShelf() {
+  el.shelf.classList.remove('open');
+  el.backdrop.hidden = true;
+  el.openShelf.setAttribute('aria-expanded', 'false');
+}
+el.openShelf.onclick = openShelf;
+el.closeShelf.onclick = closeShelf;
+el.backdrop.onclick = closeShelf;
+
 function highlight(i) {
   sents.forEach((s, k) => s.classList.toggle('now', k === i));
   el.progress.textContent = `${i >= 0 ? i + 1 : 0} / ${seq.length}`;
   if (i < 0) return;
-  sents[i]?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  if (pageOf[i] !== curPage) showPage(pageOf[i]);
+  sents[i]?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 function renderPlayState() {
   el.play.textContent = playing ? '❚❚' : '▶';
@@ -472,14 +581,14 @@ function selectStory(id, pos = -1) {
   el.storySource.textContent = story.source;
   renderStoryList();
   renderPlaylist();
+  window.scrollTo({ top: 0 });
   renderScene();
-  renderBook();
   renderLegend();
   renderCast();
+  renderBook();
   highlight(-1);
   el.hint.textContent = ready ? '재생을 누르거나, 듣고 싶은 문장을 눌러 주세요.' : '목소리를 준비하는 동안 먼저 읽어 보세요.';
   renderPlayState();
-  window.scrollTo({ top: 0 });
   warmup(0);
 }
 
@@ -523,10 +632,13 @@ el.steps.onchange = () => {
   else { cancelPending(); warmup(idx); }
 };
 document.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') closeShelf();
   if (e.target.closest('input, textarea, select, dialog, summary')) return;
   if (e.code === 'Space') { e.preventDefault(); el.play.click(); }
   if (e.code === 'ArrowLeft') el.prev.click();
   if (e.code === 'ArrowRight') el.next.click();
+  if (e.code === 'PageUp') turnPage(-1);
+  if (e.code === 'PageDown') turnPage(1);
 });
 
 /* ---------- 시작 ---------- */
@@ -544,5 +656,8 @@ tts.load((msg) => { el.engine.textContent = msg; })
   })
   .catch((e) => {
     console.error(e);
-    el.engine.textContent = `음성 엔진을 불러오지 못했어요: ${e.message}`;
+    el.engine.textContent = /모델을 찾지 못했어요/.test(e.message)
+      ? '음성 엔진을 불러오지 못했어요 (모델 파일을 받지 못함)'
+      : `음성 엔진을 불러오지 못했어요: ${e.message}`;
+    el.engine.title = e.message;
   });

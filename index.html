@@ -11,12 +11,18 @@
 </head>
 <body>
   <header class="top">
+    <button id="openShelf" class="shelf-btn" aria-controls="shelf" aria-expanded="false">📚 이야기 목록</button>
     <h1>이야기 극장</h1>
     <p id="engine" class="engine" aria-live="polite">음성 엔진 불러오는 중</p>
   </header>
 
   <div class="layout">
-    <aside class="shelf">
+    <aside id="shelf" class="shelf" aria-label="이야기 목록과 재생목록">
+      <div class="shelf-top">
+        <strong>📚 이야기 목록</strong>
+        <button id="closeShelf" class="shelf-close" aria-label="닫기">✕</button>
+      </div>
+
       <section class="plist" aria-label="재생목록">
         <div class="plist-head">
           <h2>재생목록 <span id="plCount" class="count"></span></h2>
@@ -35,27 +41,30 @@
       <ul id="storyList" class="story-list"></ul>
       <button id="openEditor" class="ghost">내 이야기 넣기</button>
     </aside>
+    <div id="shelfBackdrop" class="backdrop" hidden></div>
 
     <main class="stage">
-      <article class="page">
+      <article id="page" class="page">
         <header class="page-head">
           <div id="scene" class="scene" role="img"></div>
-          <p id="storySource" class="source"></p>
-          <h2 id="storyTitle" class="title"></h2>
-          <p id="castLegend" class="legend" aria-label="등장인물"></p>
-          <details id="voices" class="voices">
-            <summary>목소리 바꾸기</summary>
-            <div id="castList" class="cast-list"></div>
-          </details>
+          <div class="head-text">
+            <p id="storySource" class="source"></p>
+            <h2 id="storyTitle" class="title"></h2>
+            <p id="castLegend" class="legend" aria-label="등장인물"></p>
+            <details id="voices" class="voices">
+              <summary>목소리 바꾸기</summary>
+              <div id="castList" class="cast-list"></div>
+            </details>
+          </div>
         </header>
 
         <div id="book" class="book"></div>
 
-        <section id="askBox" class="ask" aria-label="생각해 볼까요">
-          <h3>생각해 볼까요?</h3>
-          <div id="ask"></div>
-        </section>
-
+        <nav class="pager" aria-label="쪽 넘기기">
+          <button id="pgPrev" class="pg-btn">◀ 앞 쪽</button>
+          <span id="pgNum" class="pg-num"></span>
+          <button id="pgNext" class="pg-btn">다음 쪽 ▶</button>
+        </nav>
         <p id="hint" class="hint-line" aria-live="polite"></p>
       </article>
     </main>
