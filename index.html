@@ -23,28 +23,42 @@
     </aside>
 
     <main class="stage">
-      <div class="stage-head">
-        <p id="storySource" class="source"></p>
-        <h2 id="storyTitle" class="title"></h2>
-      </div>
+      <article class="page">
+        <header class="page-head">
+          <div id="scene" class="scene" role="img"></div>
+          <p id="storySource" class="source"></p>
+          <h2 id="storyTitle" class="title"></h2>
+          <p id="castLegend" class="legend" aria-label="등장인물"></p>
+          <details id="voices" class="voices">
+            <summary>목소리 바꾸기</summary>
+            <div id="castList" class="cast-list"></div>
+          </details>
+        </header>
 
-      <section class="cast" aria-label="등장인물과 목소리">
-        <div id="castList" class="cast-list"></div>
-      </section>
+        <div id="book" class="book"></div>
 
-      <section class="spotlight" aria-live="polite">
-        <p id="spotName" class="spot-name"></p>
-        <p id="spotText" class="spot-text">이야기를 고르고 재생을 눌러 주세요.</p>
-      </section>
+        <section id="askBox" class="ask" aria-label="생각해 볼까요">
+          <h3>생각해 볼까요?</h3>
+          <div id="ask"></div>
+        </section>
 
-      <ol id="script" class="script"></ol>
+        <p id="hint" class="hint-line" aria-live="polite"></p>
+      </article>
     </main>
   </div>
 
   <nav class="transport" aria-label="재생 조작">
-    <button id="prevBtn" class="tbtn" aria-label="이전 줄">◀◀</button>
+    <button id="prevBtn" class="tbtn" aria-label="이전 문장">◀◀</button>
     <button id="playBtn" class="tbtn play" aria-label="재생" disabled>▶</button>
-    <button id="nextBtn" class="tbtn" aria-label="다음 줄">▶▶</button>
+    <button id="nextBtn" class="tbtn" aria-label="다음 문장">▶▶</button>
+    <label class="repeat" title="이 이야기: 한 편 반복 · 같은 모음: 탈무드/이솝 차례로 계속 · 전체: 모든 이야기 차례로 계속">반복
+      <select id="repeat">
+        <option value="off">안 함</option>
+        <option value="one">이 이야기</option>
+        <option value="group">같은 모음</option>
+        <option value="all">전체</option>
+      </select>
+    </label>
     <label class="quality">목소리 품질
       <select id="steps">
         <option value="5">빠르게</option>
@@ -58,11 +72,11 @@
   <dialog id="editor" class="editor">
     <form method="dialog" class="editor-form">
       <h2>내 이야기 넣기</h2>
-      <label>제목 <input id="edTitle" required placeholder="예: 개미와 베짱이"></label>
+      <label>제목 <input id="edTitle" required placeholder="예: 우리 집 강아지"></label>
       <label>이야기
-        <textarea id="edBody" rows="12" required placeholder="해설: 여름 내내 개미는 부지런히 일했어요.&#10;베짱이: 개미야, 같이 노래나 부르자!&#10;개미: 겨울을 준비해야 해."></textarea>
+        <textarea id="edBody" rows="12" required placeholder="여름 내내 개미는 부지런히 일했어요.&#10;베짱이: 개미야, 같이 노래나 부르자!&#10;개미: 겨울을 준비해야 해."></textarea>
       </label>
-      <p class="hint">한 줄에 한 대사씩 “이름: 대사”로 적어 주세요. 이름이 없는 줄은 해설이 읽어요. 대사 안에 &lt;laugh&gt; &lt;sigh&gt; &lt;breath&gt;를 넣으면 웃음, 한숨, 숨소리가 들어가요.</p>
+      <p class="hint">한 줄에 한 문장씩 적어 주세요. 인물의 말은 “이름: 말”로 적으면 인물마다 다른 목소리와 글씨 색으로 나와요. 이름이 없는 줄은 해설이 읽어요.</p>
       <div class="editor-actions">
         <button value="cancel" class="ghost" formnovalidate>닫기</button>
         <button id="edSave" value="save" class="solid">추가하기</button>

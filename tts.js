@@ -7,9 +7,21 @@ ort.env.wasm.numThreads = self.crossOriginIsolated
   ? Math.min(4, navigator.hardwareConcurrency || 1)
   : 1;
 
-// 아카이브 공식 가중치(고정 리비전). ./assets/onnx/tts.json 이 있으면 자체 호스팅 파일을 우선 사용.
-const HF_BASE =
-  'https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46';
+// 모델 저장소(HF). 기본은 아카이브 공식 가중치의 고정 리비전.
+// 다른 HF 저장소를 쓰려면 MODEL_REPO/MODEL_REV 를 바꾸거나, 주소 뒤에 ?model=계정/저장소@리비전 을 붙임.
+// ./assets/onnx/tts.json 이 있으면 자체 호스팅 파일을 가장 먼저 사용.
+const MODEL_REPO = 'supertone-oss-archive/supertonic-3';
+const MODEL_REV = 'aafc6e32416a594460b32413efc49d7fe4ce6d46';
+function hfBase() {
+  let repo = MODEL_REPO;
+  let rev = MODEL_REV;
+  const q = new URLSearchParams(location.search).get('model');
+  if (q && /^[\w.-]+\/[\w.-]+(@[\w.-]+)?$/.test(q)) {
+    [repo, rev = 'main'] = q.split('@');
+  }
+  return `https://huggingface.co/${repo}/resolve/${rev}`;
+}
+const HF_BASE = hfBase();
 const LOCAL_BASE = './assets';
 const CACHE_NAME = 'supertonic3-aafc6e3';
 
@@ -145,6 +157,7 @@ export class SupertonicTTS {
     // 저장 공간 부족 시 브라우저가 모델 캐시를 지우지 않도록 영구 저장 요청
     try { await navigator.storage?.persist?.(); } catch (_) { /* unsupported */ }
     this.base = await resolveBase();
+    console.info(`[tts] 모델 위치: ${this.base}`);
     onStatus?.('설정 파일을 불러오는 중');
     this.cfgs = await fetchJSON(`${this.base}/onnx/tts.json`);
     this.proc = new UnicodeProcessor(await fetchJSON(`${this.base}/onnx/unicode_indexer.json`));
