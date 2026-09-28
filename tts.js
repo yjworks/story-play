@@ -320,13 +320,15 @@ export class SupertonicTTS {
     return st;
   }
 
-  async _infer(text, lang, st, steps, speed) {
+  // check: 모델 실행 사이마다 부름. 취소됐으면 AbortError 를 던져 합성 중인 문장도 중간에 멈춤.
+  async _infer(text, lang, st, steps, speed, check = async () => {}) {
     const { dp, enc, vec, voc } = this.sessions;
     const ids = this.proc.encode(text, lang);
     const L = ids.length;
     const textIds = new ort.Tensor('int64', BigInt64Array.from(ids, (x) => BigInt(x)), [1, L]);
     const textMask = new ort.Tensor('float32', new Float32Array(L).fill(1), [1, 1, L]);
 
+    await check();
     const dOut = await dp.run({ text_ids: textIds, style_dp: st.dp, text_mask: textMask });
     const dur = dOut.duration.data[0] / speed;
 
@@ -345,6 +347,7 @@ export class SupertonicTTS {
     const totalStep = new ort.Tensor('float32', new Float32Array([steps]), [1]);
 
     for (let s = 0; s < steps; s++) {
+      await check();
       const out = await vec.run({
         noisy_latent: new ort.Tensor('float32', xt, [1, dim, T]),
         text_emb: textEmb,
@@ -357,25 +360,30 @@ export class SupertonicTTS {
       xt = new Float32Array(out.denoised_latent.data);
     }
 
+    await check();
     const vOut = await voc.run({ latent: new ort.Tensor('float32', xt, [1, dim, T]) });
     const wav = vOut.wav_tts.data;
     return wav.slice(0, Math.min(wav.length, wavLen || wav.length));
   }
 
   // 한 줄(대사)을 합성해 Float32Array(PCM, sampleRate) 반환.
-  // signal 이 abort 되면 아직 시작 전인 작업은 건너뜀(목소리·품질을 바꿨을 때 낡은 미리 합성이 줄을 막지 않도록).
+  // signal 이 abort 되면 시작 전인 작업은 건너뛰고, 합성 중인 작업도 모델 실행 사이에서 멈춤
+  // (다른 이야기로 바꾸거나 목소리·품질을 바꿨을 때 낡은 합성이 줄을 막지 않도록).
   synth(text, { voice = 'F1', lang = 'ko', steps = 8, speed = 1.05, gap = 0.25, signal, onStart } = {}) {
     const job = this.lock.then(async () => {
       // 앞 작업이 끝나면 곧바로(마이크로태스크로) 다음 작업이 시작돼서, 그 사이 도착한 취소 메시지가 처리될 틈이 없음.
       // 한 번 이벤트 루프에 양보해 취소 메시지를 먼저 받은 뒤 확인함(워커에서 취소한 문장을 헛되이 합성하던 문제).
-      await new Promise((r) => setTimeout(r, 0));
-      if (signal?.aborted) throw new DOMException('취소됨', 'AbortError');
+      const check = async () => {
+        await new Promise((r) => setTimeout(r, 0));
+        if (signal?.aborted) throw new DOMException('취소됨', 'AbortError');
+      };
+      await check();
       onStart?.();
       const t0 = performance.now();
       const st = await this.style(voice);
       const maxLen = lang === 'ko' || lang === 'ja' ? 120 : 300;
       const parts = [];
-      for (const c of chunkText(text, maxLen)) parts.push(await this._infer(c, lang, st, steps, speed));
+      for (const c of chunkText(text, maxLen)) parts.push(await this._infer(c, lang, st, steps, speed, check));
       const silence = Math.floor(gap * this.sampleRate);
       const total = parts.reduce((a, p) => a + p.length, 0) + silence * Math.max(0, parts.length - 1);
       const out = new Float32Array(total);
