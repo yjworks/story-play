@@ -7,36 +7,32 @@ ort.env.wasm.numThreads = self.crossOriginIsolated
   ? Math.min(4, navigator.hardwareConcurrency || 1)
   : 1;
 
-// 모델 저장소(HF). 기본은 아카이브 공식 가중치의 고정 리비전.
-// 다른 HF 저장소를 쓰려면 MODEL_REPO/MODEL_REV 를 바꾸거나, 주소 뒤에 ?model=계정/저장소@리비전 을 붙임.
-// ./assets/onnx/tts.json 이 있으면 자체 호스팅 파일을 가장 먼저 사용.
-const MODEL_REPO = 'supertone-oss-archive/supertonic-3';
-const MODEL_REV = 'aafc6e32416a594460b32413efc49d7fe4ce6d46';
-function hfBase() {
-  let repo = MODEL_REPO;
-  let rev = MODEL_REV;
+// 모델 위치 후보. 위에서부터 차례로 시도하고, 파일이 없거나 구성이 다르면 다음 후보로 넘어감.
+//  1) ./assets            자체 호스팅(있을 때만)
+//  2) edge-lab            leeyunjai/edge-lab 저장소의 tts/ 폴더
+//  3) 공식 아카이브        supertone-oss-archive/supertonic-3 고정 리비전
+// 주소 뒤에 ?model=계정/저장소[@리비전][/하위/폴더] 를 붙이면 그 위치만 씀. 예: ?model=leeyunjai/edge-lab@main/tts
+// 각 위치 안의 구성은 두 가지를 모두 받음: <위치>/onnx/*.onnx 또는 <위치>/*.onnx (목소리는 <위치>/voice_styles/*.json)
+const hf = (repo, rev, path = '') => `https://huggingface.co/${repo}/resolve/${rev}${path ? `/${path}` : ''}`;
+const EDGE_LAB = { name: 'edge-lab', base: hf('leeyunjai/edge-lab', 'main', 'tts') };
+const OFFICIAL = {
+  name: '공식 아카이브',
+  base: hf('supertone-oss-archive/supertonic-3', 'aafc6e32416a594460b32413efc49d7fe4ce6d46'),
+};
+const LOCAL = { name: '자체 호스팅', base: './assets', local: true };
+
+function modelSources() {
   const q = new URLSearchParams(location.search).get('model');
-  if (q && /^[\w.-]+\/[\w.-]+(@[\w.-]+)?$/.test(q)) {
-    [repo, rev = 'main'] = q.split('@');
-  }
-  return `https://huggingface.co/${repo}/resolve/${rev}`;
+  const m = q?.match(/^([\w.-]+\/[\w.-]+)(?:@([\w.-]+))?(?:\/([\w./-]+))?$/);
+  if (m) return [{ name: q, base: hf(m[1], m[2] || 'main', m[3] || '') }];
+  return [LOCAL, EDGE_LAB, OFFICIAL];
 }
-const HF_BASE = hfBase();
-const LOCAL_BASE = './assets';
 const CACHE_NAME = 'supertonic3-aafc6e3';
 
 const AVAILABLE_LANGS = ['en', 'ko', 'ja', 'ar', 'bg', 'cs', 'da', 'de', 'el', 'es', 'et', 'fi', 'fr', 'hi',
   'hr', 'hu', 'id', 'it', 'lt', 'lv', 'nl', 'pl', 'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi', 'na'];
 
 export const VOICES = ['F1', 'F2', 'F3', 'F4', 'F5', 'M1', 'M2', 'M3', 'M4', 'M5'];
-
-async function resolveBase() {
-  try {
-    const r = await fetch(`${LOCAL_BASE}/onnx/tts.json`, { method: 'HEAD', cache: 'no-store' });
-    if (r.ok) return LOCAL_BASE;
-  } catch (_) { /* no local assets */ }
-  return HF_BASE;
-}
 
 async function openCache() {
   try { return await caches.open(CACHE_NAME); } catch (_) { return null; }
@@ -141,7 +137,9 @@ function gaussian() {
 
 export class SupertonicTTS {
   constructor() {
-    this.base = null;
+    this.onnxDir = null;
+    this.voiceDir = null;
+    this.source = null;
     this.cfgs = null;
     this.proc = null;
     this.sessions = null;
@@ -156,29 +154,54 @@ export class SupertonicTTS {
     const t0 = performance.now();
     // 저장 공간 부족 시 브라우저가 모델 캐시를 지우지 않도록 영구 저장 요청
     try { await navigator.storage?.persist?.(); } catch (_) { /* unsupported */ }
-    this.base = await resolveBase();
-    console.info(`[tts] 모델 위치: ${this.base}`);
-    onStatus?.('설정 파일을 불러오는 중');
-    this.cfgs = await fetchJSON(`${this.base}/onnx/tts.json`);
-    this.proc = new UnicodeProcessor(await fetchJSON(`${this.base}/onnx/unicode_indexer.json`));
-
     const names = [
       ['dp', 'duration_predictor.onnx'],
       ['enc', 'text_encoder.onnx'],
       ['vec', 'vector_estimator.onnx'],
       ['voc', 'vocoder.onnx'],
     ];
-    const bufs = {};
-    for (let i = 0; i < names.length; i++) {
-      const [key, file] = names[i];
-      bufs[key] = await fetchCached(`${this.base}/onnx/${file}`, (got, total, cached) => {
-        const mb = (n) => (n / 1048576).toFixed(1);
-        const size = total ? `${mb(got)} / ${mb(total)} MB` : `${mb(got)} MB`;
-        onStatus?.(cached
-          ? `저장된 모델 사용 (${i + 1}/4)`
-          : `모델 내려받는 중 (${i + 1}/4) ${size}`);
-      });
+    let bufs = null;
+    const tried = [];
+    for (const src of modelSources()) {
+      for (const onnxDir of [`${src.base}/onnx`, src.base]) {
+        try {
+          if (src.local) {
+            const r = await fetch(`${onnxDir}/tts.json`, { method: 'HEAD', cache: 'no-store' });
+            if (!r.ok) throw new Error(`없음 (${r.status})`);
+          }
+          onStatus?.(`설정 파일을 불러오는 중 (${src.name})`);
+          const cfgs = await fetchJSON(`${onnxDir}/tts.json`);
+          if (!cfgs?.ae?.sample_rate || !cfgs?.ttl?.latent_dim) throw new Error('tts.json 형식이 다름');
+          const indexer = await fetchJSON(`${onnxDir}/unicode_indexer.json`);
+          const voiceDir = `${src.base}/voice_styles`;
+          await fetchJSON(`${voiceDir}/${VOICES[0]}.json`);
+          const got = {};
+          for (let i = 0; i < names.length; i++) {
+            const [key, file] = names[i];
+            got[key] = await fetchCached(`${onnxDir}/${file}`, (n, total, cached) => {
+              const mb = (x) => (x / 1048576).toFixed(1);
+              const size = total ? `${mb(n)} / ${mb(total)} MB` : `${mb(n)} MB`;
+              onStatus?.(cached
+                ? `저장된 모델 사용 (${i + 1}/4)`
+                : `모델 내려받는 중 (${i + 1}/4, ${src.name}) ${size}`);
+            });
+          }
+          this.cfgs = cfgs;
+          this.proc = new UnicodeProcessor(indexer);
+          this.onnxDir = onnxDir;
+          this.voiceDir = voiceDir;
+          this.source = src.name;
+          bufs = got;
+          break;
+        } catch (e) {
+          tried.push(`${onnxDir}: ${e.message}`);
+          if (!src.local) console.warn(`[tts] 모델 위치 건너뜀: ${onnxDir}`, e);
+        }
+      }
+      if (bufs) break;
     }
+    if (!bufs) throw new Error(`모델을 찾지 못했어요. ${tried.join(' / ')}`);
+    console.info(`[tts] 모델 위치: ${this.onnxDir} (${this.source})`);
 
     const create = async (ep) => {
       const s = {};
@@ -211,7 +234,7 @@ export class SupertonicTTS {
 
   async style(name) {
     if (this.styles.has(name)) return this.styles.get(name);
-    const j = await fetchJSON(`${this.base}/voice_styles/${name}.json`);
+    const j = await fetchJSON(`${this.voiceDir}/${name}.json`);
     const td = j.style_ttl.dims;
     const dd = j.style_dp.dims;
     const st = {

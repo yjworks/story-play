@@ -8,7 +8,9 @@
 - 이야기마다 첫머리에 삽화가 있습니다. 배경과 이모지로 그린 장면(`scene`)이고, `stories.js`에 `image: 'img/파일.webp'`를 넣으면 그린 그림으로 바뀝니다.
 - 목소리는 인물마다 자동으로 정해집니다. 바꾸고 싶을 때만 제목 아래 "목소리 바꾸기"를 펼칩니다.
 - 이야기가 끝나면 해설 목소리로 인사 한마디와 생각해 볼 질문 1~2개를 들려줍니다(`outro`). 질문 뒤에는 아이가 생각할 시간으로 4초를 쉽니다.
-- 반복: 안 함 / 이 이야기(한 편 반복) / 같은 모음(탈무드나 이솝을 차례로 계속) / 전체(모든 이야기를 차례로 계속). 고른 값은 기기에 기억합니다.
+- 재생목록: 이야기 옆 ＋로 담고(같은 이야기를 여러 번 담아도 됨), ▲▼로 순서를 바꾸고, ✕로 뺍니다. "탈무드 모두 담기", "이솝 모두 담기"로 한꺼번에 담을 수 있습니다. 재생목록은 기기에 기억합니다.
+- 반복(음악 플레이어와 같음): 반복 안 함(재생목록을 끝까지 한 번) / 한 편 반복(지금 이야기만 계속) / 목록 반복(끝나면 목록 처음으로). 재생목록에서 누른 이야기만 다음 곡으로 넘어가고, 목록 밖에서 고른 이야기는 한 편 반복일 때만 다시 듣습니다.
+- 글꼴: 본문 Noto Sans KR 500, 제목 Jua.
 - 문장을 누르면 그 문장부터 읽습니다.
 
 ## 실행
@@ -26,16 +28,16 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 - GitHub Pages는 COOP/COEP 헤더를 줄 수 없어 `crossOriginIsolated`가 false입니다. 그래서 WASM으로 넘어가면 스레드 1개로 동작합니다. WebGPU 경로는 영향이 없습니다.
 
 ## 모델
-- 기본: Hugging Face `supertone-oss-archive/supertonic-3`의 고정 리비전(`aafc6e32416a594460b32413efc49d7fe4ce6d46`)에서 받아 Cache Storage(`supertonic3-aafc6e3`)에 저장합니다.
-  두 번째 방문부터는 네트워크 없이 불러옵니다.
-- 다른 HF 저장소: `tts.js`의 `MODEL_REPO`, `MODEL_REV`를 바꾸거나, 주소 뒤에 `?model=계정/저장소@리비전`을 붙입니다(리비전을 빼면 `main`). 저장소 안의 파일 구성은 공식과 같아야 합니다: `onnx/tts.json`, `onnx/unicode_indexer.json`, `onnx/{duration_predictor,text_encoder,vector_estimator,vocoder}.onnx`, `voice_styles/{F1..F5,M1..M5}.json`. 콘솔 `[tts] 모델 위치:`에서 실제로 쓰는 주소를 확인할 수 있습니다.
-- 자체 호스팅: 아래처럼 받아 `assets/`에 두면 HF 대신 로컬 파일을 자동으로 씁니다.
-  ```bash
-  hf download supertone-oss-archive/supertonic-3 --revision aafc6e32416a594460b32413efc49d7fe4ce6d46 --local-dir assets
-  ```
-  GitHub Pages는 파일당 100MB 제한이 있으니 먼저 `ls -l assets/onnx/*.onnx`로 크기를 확인하세요.
+실행할 때 아래 위치를 차례로 시도하고, 파일이 없거나 구성이 다르면 다음 위치로 넘어갑니다. 실제로 쓰는 위치는 상단 문구(`준비 완료 (WebGPU · edge-lab)`)와 콘솔 `[tts] 모델 위치:`에 나옵니다.
+1. `./assets` (자체 호스팅, 있을 때만)
+2. `leeyunjai/edge-lab`의 `tts/` 폴더, `main` 브랜치 (커밋 609ca32 "replace TTS with supertonic-3"에서 구성 확인: `onnx/`, `voice_styles/`)
+3. 공식 아카이브 `supertone-oss-archive/supertonic-3`, 고정 리비전 `aafc6e32416a594460b32413efc49d7fe4ce6d46`
+
+- 주소 뒤에 `?model=계정/저장소[@리비전][/폴더]`를 붙이면 그 위치만 씁니다. 예: `?model=leeyunjai/edge-lab@main/tts`
+- 받은 파일은 Cache Storage(`supertonic3-aafc6e3`)에 URL 단위로 저장합니다. edge-lab은 `main`을 따라가므로, 저장소 파일을 바꾸면 `tts.js`의 `CACHE_NAME`을 바꿔야 새 파일을 받습니다. 고정하려면 `EDGE_LAB`의 `'main'`을 전체 커밋 해시로 바꾸세요.
 - 런타임: onnxruntime-web 1.22.0 고정. `dist/ort.webgpu.min.mjs`와 WASM 파일이 npm 1.22.0 패키지에 있는 것은 확인했습니다.
-- 라이선스: 모델은 OpenRAIL-M, 샘플 코드는 MIT입니다.
+- 라이선스: Supertonic 모델은 OpenRAIL-M, 샘플 코드는 MIT입니다. edge-lab 저장소에는 AGPL-3.0 태그가 붙어 있어, 모델 파일의 라이선스 표기가 원본(OpenRAIL-M)과 맞는지 확인이 필요합니다.
+- GitHub Pages는 파일당 100MB 제한이 있습니다. 자체 호스팅(`assets/`)을 쓸 때만 해당합니다.
 
 ## 파일
 | 파일 | 역할 |

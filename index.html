@@ -6,7 +6,7 @@
   <title>이야기 극장</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,6 +17,20 @@
 
   <div class="layout">
     <aside class="shelf">
+      <section class="plist" aria-label="재생목록">
+        <div class="plist-head">
+          <h2>재생목록 <span id="plCount" class="count"></span></h2>
+          <button id="plPlay" class="mini solid-mini" disabled>▶ 목록 재생</button>
+          <button id="plClear" class="mini">비우기</button>
+        </div>
+        <ol id="playlist" class="playlist"></ol>
+        <p id="plEmpty" class="hint">이야기 옆 ＋를 누르면 여기에 담겨요.</p>
+        <div class="plist-add">
+          <button class="mini" data-src="탈무드">탈무드 모두 담기</button>
+          <button class="mini" data-src="이솝우화">이솝 모두 담기</button>
+        </div>
+      </section>
+
       <h2>이야기 고르기</h2>
       <ul id="storyList" class="story-list"></ul>
       <button id="openEditor" class="ghost">내 이야기 넣기</button>
@@ -51,12 +65,11 @@
     <button id="prevBtn" class="tbtn" aria-label="이전 문장">◀◀</button>
     <button id="playBtn" class="tbtn play" aria-label="재생" disabled>▶</button>
     <button id="nextBtn" class="tbtn" aria-label="다음 문장">▶▶</button>
-    <label class="repeat" title="이 이야기: 한 편 반복 · 같은 모음: 탈무드/이솝 차례로 계속 · 전체: 모든 이야기 차례로 계속">반복
+    <label class="repeat" title="반복 안 함: 재생목록을 끝까지 한 번 · 한 편 반복: 지금 이야기만 계속 · 목록 반복: 재생목록을 처음부터 다시">반복
       <select id="repeat">
-        <option value="off">안 함</option>
-        <option value="one">이 이야기</option>
-        <option value="group">같은 모음</option>
-        <option value="all">전체</option>
+        <option value="off">반복 안 함</option>
+        <option value="one">한 편 반복</option>
+        <option value="list">목록 반복</option>
       </select>
     </label>
     <label class="quality">목소리 품질

@@ -10,6 +10,7 @@ const VOICE_LABEL = {
 };
 const USER_KEY = 'story-player:user-stories';
 const REPEAT_KEY = 'story-player:repeat';
+const PLAYLIST_KEY = 'story-player:playlist';
 const LOOKAHEAD = 2; // 재생 중 미리 합성해 둘 문장 수 (이야기를 고르면 첫 문장 + LOOKAHEAD 문장도 미리 합성)
 const NARRATION_PER_PARA = 3; // 해설 문장을 한 문단에 몇 개까지 이어 붙일지
 const GAP_MS = 250; // 문장 사이 쉼
@@ -34,6 +35,7 @@ const el = {
   engine: $('engine'), storyList: $('storyList'), scene: $('scene'), storyTitle: $('storyTitle'),
   storySource: $('storySource'), legend: $('castLegend'), book: $('book'), ask: $('ask'), hint: $('hint'),
   castList: $('castList'), repeat: $('repeat'),
+  playlist: $('playlist'), plCount: $('plCount'), plEmpty: $('plEmpty'), plPlay: $('plPlay'), plClear: $('plClear'),
   play: $('playBtn'), prev: $('prevBtn'), next: $('nextBtn'), steps: $('steps'), progress: $('progress'),
   editor: $('editor'), openEditor: $('openEditor'), edTitle: $('edTitle'), edBody: $('edBody'),
 };
@@ -42,6 +44,8 @@ const tts = new SupertonicTTS();
 let ready = false;
 let stories = [...STORIES, ...loadUserStories()];
 let story = null;
+let playlist = loadPlaylist(); // 재생목록: 이야기 id 배열 (같은 이야기를 여러 번 담아도 됨)
+let plPos = -1; // 지금 재생목록의 몇 번째를 듣는 중인지 (-1: 재생목록 밖)
 let seq = []; // 읽을 순서: 본문 + 마무리 질문. { who, text, ask, q }
 let sents = []; // 문장 번호 → 화면의 <span>/<p>
 let idx = 0;
@@ -60,7 +64,19 @@ function loadUserStories() {
 function saveUserStories() {
   try { localStorage.setItem(USER_KEY, JSON.stringify(stories.filter((s) => s.user))); } catch (_) { /* ignore */ }
 }
-try { el.repeat.value = localStorage.getItem(REPEAT_KEY) || 'off'; } catch (_) { /* ignore */ }
+function loadPlaylist() {
+  try {
+    const ids = new Set(stories.map((s) => s.id));
+    return JSON.parse(localStorage.getItem(PLAYLIST_KEY) || '[]').filter((id) => ids.has(id));
+  } catch (_) { return []; }
+}
+function savePlaylist() {
+  try { localStorage.setItem(PLAYLIST_KEY, JSON.stringify(playlist)); } catch (_) { /* ignore */ }
+}
+try {
+  const saved = localStorage.getItem(REPEAT_KEY);
+  el.repeat.value = ['off', 'one', 'list'].includes(saved) ? saved : (saved ? 'list' : 'off');
+} catch (_) { /* ignore */ }
 el.repeat.onchange = () => { try { localStorage.setItem(REPEAT_KEY, el.repeat.value); } catch (_) { /* ignore */ } };
 
 /* ---------- 색상/목소리 ---------- */
@@ -145,16 +161,88 @@ function playPCM(pcm) {
 }
 function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-/* ---------- 반복 / 이어 듣기 ---------- */
-// off: 한 번만 / one: 이 이야기 반복 / group: 같은 모음(탈무드·이솝·내 이야기) 차례로 반복 / all: 전체 차례로 반복
-function nextStoryId() {
+/* ---------- 반복 / 재생목록 ---------- */
+// 음악 플레이어처럼: 재생목록에서 듣는 중이면 끝나면 다음 이야기로.
+//  반복 안 함: 목록 끝에서 멈춤 / 한 편 반복: 지금 이야기만 다시 / 목록 반복: 끝나면 목록 처음으로.
+// 재생목록 밖의 이야기는 한 편 반복일 때만 다시 들려줌.
+function nextStep() {
   const mode = el.repeat.value;
-  if (mode === 'one') return story.id;
-  if (mode === 'off') return null;
-  const pool = mode === 'group' ? stories.filter((s) => s.source === story.source) : stories;
-  const at = pool.findIndex((s) => s.id === story.id);
-  return pool[(at + 1) % pool.length].id;
+  if (mode === 'one') return { id: story.id, pos: plPos };
+  if (plPos < 0 || playlist[plPos] !== story.id) return null;
+  if (plPos + 1 < playlist.length) return { id: playlist[plPos + 1], pos: plPos + 1 };
+  if (mode === 'list' && playlist.length) return { id: playlist[0], pos: 0 };
+  return null;
 }
+function playFromList(pos) {
+  if (!ready || !playlist[pos]) return;
+  ensureCtx();
+  selectStory(playlist[pos], pos);
+  run(0);
+}
+function addToList(id) {
+  playlist.push(id);
+  savePlaylist();
+  renderPlaylist();
+  renderStoryList();
+}
+function removeFromList(pos) {
+  playlist.splice(pos, 1);
+  if (plPos === pos) plPos = -1;
+  else if (plPos > pos) plPos -= 1;
+  savePlaylist();
+  renderPlaylist();
+  renderStoryList();
+}
+function moveInList(pos, d) {
+  const to = pos + d;
+  if (to < 0 || to >= playlist.length) return;
+  [playlist[pos], playlist[to]] = [playlist[to], playlist[pos]];
+  if (plPos === pos) plPos = to;
+  else if (plPos === to) plPos = pos;
+  savePlaylist();
+  renderPlaylist();
+}
+function renderPlaylist() {
+  const title = (id) => stories.find((s) => s.id === id)?.title || id;
+  el.playlist.replaceChildren(...playlist.map((id, pos) => {
+    const li = document.createElement('li');
+    li.classList.toggle('on', pos === plPos);
+    const t = document.createElement('button');
+    t.className = 'pl-title';
+    t.textContent = title(id);
+    t.onclick = () => playFromList(pos);
+    const mk = (label, aria, fn) => {
+      const b = document.createElement('button');
+      b.className = 'pl-btn'; b.textContent = label; b.setAttribute('aria-label', aria); b.onclick = fn;
+      return b;
+    };
+    li.append(t,
+      mk('▲', `${title(id)} 위로`, () => moveInList(pos, -1)),
+      mk('▼', `${title(id)} 아래로`, () => moveInList(pos, 1)),
+      mk('✕', `${title(id)} 빼기`, () => removeFromList(pos)));
+    return li;
+  }));
+  el.plCount.textContent = playlist.length ? `${playlist.length}편` : '';
+  el.plEmpty.hidden = playlist.length > 0;
+  el.plPlay.disabled = !ready || !playlist.length;
+}
+el.plPlay.onclick = () => playFromList(0);
+el.plClear.onclick = () => {
+  if (!playlist.length || !confirm('재생목록을 비울까요?')) return;
+  playlist = [];
+  plPos = -1;
+  savePlaylist();
+  renderPlaylist();
+  renderStoryList();
+};
+document.querySelectorAll('.plist-add [data-src]').forEach((b) => {
+  b.onclick = () => {
+    stories.filter((s) => s.source === b.dataset.src && !playlist.includes(s.id)).forEach((s) => playlist.push(s.id));
+    savePlaylist();
+    renderPlaylist();
+    renderStoryList();
+  };
+});
 
 /* ---------- 재생 루프 ---------- */
 async function run(from) {
@@ -191,12 +279,12 @@ async function run(from) {
   if (my !== runId) return;
   playing = false;
   if (idx >= seq.length) {
-    const nextId = nextStoryId();
-    if (nextId) {
-      el.hint.textContent = nextId === story.id ? '처음부터 다시 들려줄게요.' : '다음 이야기로 넘어갈게요.';
+    const nx = nextStep();
+    if (nx) {
+      el.hint.textContent = nx.id === story.id ? '처음부터 다시 들려줄게요.' : '다음 이야기로 넘어갈게요.';
       await wait(NEXT_STORY_MS);
       if (my !== runId) return;
-      if (nextId !== story.id) selectStory(nextId);
+      selectStory(nx.id, nx.pos);
       run(0);
       return;
     }
@@ -225,6 +313,7 @@ function renderStoryList() {
   el.storyList.replaceChildren(...stories.map((s) => {
     const li = document.createElement('li');
     const b = document.createElement('button');
+    b.className = 'pick';
     b.setAttribute('aria-current', String(story?.id === s.id));
     const pic = document.createElement('span'); pic.className = 's-pic'; pic.setAttribute('aria-hidden', 'true');
     pic.textContent = s.emoji || '📖';
@@ -232,7 +321,14 @@ function renderStoryList() {
     const src = document.createElement('span'); src.className = 's-src'; src.textContent = s.source;
     b.append(pic, t, src);
     b.onclick = () => selectStory(s.id);
-    li.append(b);
+    const add = document.createElement('button');
+    add.className = 'add';
+    const inList = playlist.includes(s.id);
+    add.setAttribute('aria-pressed', String(inList));
+    add.setAttribute('aria-label', inList ? `${s.title} 재생목록에 한 번 더 담기` : `${s.title} 재생목록에 담기`);
+    add.textContent = inList ? '✓' : '＋';
+    add.onclick = () => addToList(s.id);
+    li.append(b, add);
     return li;
   }));
 }
@@ -365,15 +461,17 @@ function renderPlayState() {
   el.play.setAttribute('aria-label', playing ? '일시정지' : '재생');
   el.play.disabled = !ready || !story;
 }
-function selectStory(id) {
+function selectStory(id, pos = -1) {
   pause();
   cancelPending();
   story = stories.find((s) => s.id === id);
+  plPos = pos;
   seq = buildSeq();
   idx = 0;
   el.storyTitle.textContent = story.title;
   el.storySource.textContent = story.source;
   renderStoryList();
+  renderPlaylist();
   renderScene();
   renderBook();
   renderLegend();
@@ -437,8 +535,9 @@ tts.load((msg) => { el.engine.textContent = msg; })
   .then(async () => {
     await tts.style(castOf(seq[0].who).voice);
     ready = true;
-    el.engine.textContent = `준비 완료 (${tts.backend})`;
+    el.engine.textContent = `준비 완료 (${tts.backend} · ${tts.source})`;
     renderCast();
+    renderPlaylist();
     renderPlayState();
     if (!playing) el.hint.textContent = '재생을 누르거나, 듣고 싶은 문장을 눌러 주세요.';
     warmup(idx);
