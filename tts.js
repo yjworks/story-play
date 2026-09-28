@@ -16,7 +16,8 @@ ort.env.wasm.numThreads = self.crossOriginIsolated
 // 각 위치 안의 구성은 두 가지를 모두 받음: <위치>/onnx/*.onnx 또는 <위치>/*.onnx (목소리는 <위치>/voice_styles/*.json)
 const hf = (repo, rev, path = '') => `https://huggingface.co/${repo}/resolve/${rev}${path ? `/${path}` : ''}`;
 const EDGE_LAB = { name: 'edge-lab', base: hf('leeyunjai/edge-lab', 'main', 'tts') };
-// 8비트 변환본(tools/convert_models.py). WASM·WebGPU 모두에서 동작하고 가벼움 → 있으면 먼저 씀
+// 8비트 변환본(tools/convert_models.py). WASM(CPU)용: 가볍고 CPU 정수 연산이라 휴대폰에 유리.
+// WebGPU에서는 8비트 연산(MatMulInteger/ConvInteger)을 GPU가 못 해서 CPU로 넘겨 매우 느려지므로 32비트를 먼저 씀.
 // INT8_REV: 8비트 파일을 다시 올리면 그 커밋의 전체 해시로 바꿀 것 → 주소가 바뀌어 모든 기기가 새 파일을 받고 예전 파일은 정리됨
 const INT8_REV = 'main';
 const EDGE_LAB_INT8 = { name: 'edge-lab 8비트', base: hf('leeyunjai/edge-lab', INT8_REV, 'tts-int8') };
@@ -27,10 +28,11 @@ const OFFICIAL = {
 const LOCAL = { name: '자체 호스팅', base: './assets', local: true };
 
 // search: 페이지 주소의 ?… 부분. 워커 안에서는 location 이 워커 파일 주소라서 페이지에서 넘겨받음.
-function modelSources(search = self.location?.search || '') {
+// ep: 'webgpu' 면 32비트 먼저, 'wasm' 이면 8비트 먼저
+function modelSources(search = self.location?.search || '', ep = 'wasm') {
   const q = new URLSearchParams(search).get('model');
   const m = q?.match(/^([\w.-]+\/[\w.-]+)(?:@([\w.-]+))?(?:\/([\w./-]+))?$/);
-  const list = [LOCAL, EDGE_LAB_INT8, EDGE_LAB, OFFICIAL];
+  const list = ep === 'webgpu' ? [LOCAL, EDGE_LAB, EDGE_LAB_INT8, OFFICIAL] : [LOCAL, EDGE_LAB_INT8, EDGE_LAB, OFFICIAL];
   // ?model= 로 지정한 위치를 먼저 시도하고, 실패하면 기본 후보로 넘어감
   if (m) list.unshift({ name: q, base: hf(m[1], m[2] || 'main', m[3] || '') });
   return list;
@@ -225,7 +227,13 @@ export class SupertonicTTS {
     // 위치 후보를 차례로: 설정·문자표·목소리 파일이 있으면 세션을 만들어 보고(WebGPU → WASM),
     // 그 위치의 모델이 이 기기에서 안 열리면 다음 후보(예: 8비트 → 32비트)로 넘어감
     const tried = [];
-    for (const src of modelSources(search)) {
+    // WebGPU 어댑터가 실제로 잡히는지 먼저 확인(navigator.gpu 가 있어도 GPU를 못 쓰는 기기가 있음)
+    const eps = [];
+    try { if (navigator.gpu && await navigator.gpu.requestAdapter()) eps.push('webgpu'); } catch (_) { /* 없음 */ }
+    eps.push('wasm');
+    console.info(`[tts] 계산 방식 후보: ${eps.join(' → ')}`);
+    for (const ep of eps) {
+    for (const src of modelSources(search, ep)) {
       for (const onnxDir of [`${src.base}/onnx`, src.base]) {
         try {
           if (src.local) {
@@ -248,29 +256,20 @@ export class SupertonicTTS {
           if (!src.local) console.warn(`[tts] 모델 위치 건너뜀: ${onnxDir}`, e);
           continue;
         }
-        console.info(`[tts] 모델 위치: ${this.onnxDir} (${this.source})`);
-        if (navigator.gpu) {
-          try {
-            this.sessions = await create('webgpu');
-            this.backend = 'WebGPU';
-          } catch (e) {
-            if (isNetwork(e)) throw e;
-            console.warn('WebGPU 실패, WASM으로 전환', e);
-          }
-        }
-        if (!this.sessions) {
-          try {
-            this.sessions = await create('wasm');
-            this.backend = 'WASM';
-          } catch (e) {
-            if (isNetwork(e)) throw e;
-            tried.push(`${onnxDir}: 이 기기에서 모델을 열지 못함 (${e.message})`);
-            console.warn(`[tts] ${this.source} 모델을 열지 못해 다음 후보로`, e);
-          }
+        console.info(`[tts] 모델 위치: ${this.onnxDir} (${this.source}), ${ep}`);
+        try {
+          this.sessions = await create(ep);
+          this.backend = ep === 'webgpu' ? 'WebGPU' : 'WASM';
+        } catch (e) {
+          if (isNetwork(e)) throw e;
+          tried.push(`${onnxDir} (${ep}): 모델을 열지 못함 (${e.message})`);
+          console.warn(`[tts] ${this.source} 모델을 ${ep}로 열지 못해 다음 후보로`, e);
         }
         break; // 이 위치는 설정이 있었으니 다른 폴더 구성은 볼 필요 없음
       }
       if (this.sessions) break;
+    }
+    if (this.sessions) break;
     }
     if (!this.sessions) throw new Error(`모델을 찾지 못했어요. ${tried.join(' / ')}`);
 

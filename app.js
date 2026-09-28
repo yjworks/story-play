@@ -320,9 +320,14 @@ async function run(from) {
     const cur = audioFor(idx);
     for (let k = 1; k <= LOOKAHEAD && idx + k < seq.length; k++) audioFor(idx + k).catch(() => {});
     let pcm;
+    // 합성이 오래 걸리면 멈춘 것처럼 보이지 않게 안내
+    const slow = setTimeout(() => { if (my === runId) el.hint.textContent = '목소리를 만드는 중이에요…'; }, 800);
     try {
       pcm = await cur;
+      clearTimeout(slow);
+      if (my === runId) el.hint.textContent = '';
     } catch (e) {
+      clearTimeout(slow);
       if (my !== runId) return;
       console.error(e);
       el.engine.textContent = `음성을 만들지 못했어요: ${e.message}`;
