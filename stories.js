@@ -3,8 +3,10 @@
 import talmud from './stories/talmud.js';
 import aesop from './stories/aesop.js';
 import english from './stories/english.js';
+import grimm from './stories/grimm.js';
 import andersen from './stories/andersen.js';
+import perrault from './stories/perrault.js';
 import world from './stories/world.js';
 import gosa from './stories/gosa.js';
 
-export const STORIES = [...talmud, ...aesop, ...english, ...andersen, ...world, ...gosa];
+export const STORIES = [...talmud, ...aesop, ...english, ...grimm, ...andersen, ...perrault, ...world, ...gosa];
