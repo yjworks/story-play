@@ -205,7 +205,7 @@ export const STORIES = [
     id: 'tongue',
     source: '탈무드',
     emoji: '👅',
-    title: '가장 좋은 것, 가장 나쁜 것',
+    title: '좋은 말 나쁜 말',
     scene: { bg: 'palace', items: ['🤴', '🍽️', '👨‍🍳'] },
     outro: [
       '요리사의 이야기, 재미있었나요?',

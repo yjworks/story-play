@@ -79,12 +79,13 @@ button { cursor: pointer; }
 .story-list .pick {
   flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 7px 10px;
   border-radius: var(--radius-sm); display: grid;
-  grid-template-columns: 2.2rem 1fr; column-gap: 8px; align-items: center;
+  grid-template-columns: 2.2rem minmax(0, 1fr); column-gap: 8px; align-items: center;
 }
 .story-list .s-pic { grid-row: span 2; font-size: 1.7rem; line-height: 1; text-align: center; }
 .story-list .pick:hover { background: var(--sheet); }
 .story-list .pick[aria-current="true"] { background: var(--sheet); box-shadow: inset 4px 0 0 var(--lamp); }
-.story-list .s-title { font-family: var(--font-title); font-size: 1.1rem; line-height: 1.3; }
+.story-list .s-title { font-family: var(--font-title); font-size: 1.1rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.story-list .pick > span:not(.s-pic) { min-width: 0; }
 .story-list .s-src { font-size: 0.78rem; color: var(--ink-soft); }
 .story-list .add {
   flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--line);
