@@ -14,6 +14,9 @@ edge-lab 에 올릴 폴더(tts-int8)를 만든다. 앱(tts.js)은 tts-int8 을 �
 실행:
   python tools/convert_models.py                 # 받기 → 변환 → 검증(wav 저장) → 업로드 폴더 만들기
   python tools/convert_models.py --src ./my/tts  # 이미 받아 둔 tts 폴더(onnx/, voice_styles/ 포함)를 쓸 때
+  python tools/convert_models.py --compare       # 잡음이 있을 때: 조합별 wav 를 work/cmp/ 에 만들어 비교(업로드 폴더는 안 만듦)
+  python tools/convert_models.py --no-conv vocoder            # vocoder 는 MatMul 만 8비트, Conv 는 32비트
+  python tools/convert_models.py --keep vocoder               # vocoder 파일 전체를 32비트로
 
 업로드(검증 결과를 듣고 괜찮을 때):
   huggingface-cli upload leeyunjai/edge-lab ./export/tts-int8 tts-int8
@@ -52,12 +55,41 @@ def to_fp16(src: Path, dst: Path):
     onnx.save(m16, str(dst))
 
 
-def to_int8(src: Path, dst: Path):
+def to_int8(src: Path, dst: Path, conv: bool = True):
     from onnxruntime.quantization import QuantType, quantize_dynamic
-    # MatMul/Gemm/Conv 가중치를 8비트로(동적 양자화).
+    # MatMul/Gemm(/Conv) 가중치를 8비트로(동적 양자화). conv=False 면 Conv 는 32비트로 둠(잡음이 날 때).
     # 반드시 부호 없는 8비트(QUInt8): 부호 있는 8비트(QInt8)의 ConvInteger 는 브라우저(onnxruntime-web 1.22.0)
     # WASM·WebGPU 모두 "구현 없음"으로 안 열림. QUInt8 은 둘 다 정상(작은 모델로 확인, 오차 약 1%).
-    quantize_dynamic(str(src), str(dst), weight_type=QuantType.QUInt8, op_types_to_quantize=['MatMul', 'Gemm', 'Conv'])
+    ops = ['MatMul', 'Gemm', 'Conv'] if conv else ['MatMul', 'Gemm']
+    quantize_dynamic(str(src), str(dst), weight_type=QuantType.QUInt8, op_types_to_quantize=ops)
+
+
+# 파일별 방식: 'all' = MatMul/Gemm/Conv 8비트, 'mm' = MatMul/Gemm 만 8비트, 'fp32' = 그대로
+def build(fp32: Path, cache: Path, out: Path, plan: dict):
+    out.mkdir(parents=True, exist_ok=True)
+    for name in ['tts.json', 'unicode_indexer.json']:
+        shutil.copy(fp32 / name, out / name)
+    for n in NAMES:
+        mode = plan[n]
+        if mode == 'fp32':
+            shutil.copy(fp32 / f'{n}.onnx', out / f'{n}.onnx')
+            continue
+        c = cache / f'{n}.{mode}.onnx'
+        if not c.exists():
+            print(f'변환 중: {n} ({"MatMul/Gemm/Conv" if mode == "all" else "MatMul/Gemm 만"})')
+            to_int8(fp32 / f'{n}.onnx', c, conv=(mode == 'all'))
+        shutil.copy(c, out / f'{n}.onnx')
+
+
+def plan_label(plan: dict) -> str:
+    fp = [n for n in NAMES if plan[n] == 'fp32']
+    mm = [n for n in NAMES if plan[n] == 'mm']
+    parts = []
+    if mm:
+        parts.append(f'Conv 32비트 유지: {", ".join(mm)}')
+    if fp:
+        parts.append(f'파일 전체 32비트 유지: {", ".join(fp)}')
+    return ', '.join(parts)
 
 
 # ---------------------------------------------------------------- 합성 (앱의 tts.js 와 같은 순서)
@@ -141,61 +173,97 @@ def make_export(src_tts: Path, variant_onnx: Path, out: Path, label: str):
         '- 사용 제한(Attachment A)은 원본과 같이 적용됩니다.\n', encoding='utf-8')
 
 
+def compare_line(label, d, voices, steps, ref, out_wav):
+    try:
+        wav, sr, tl, ts = synth(d, voices, TEST_TEXT, steps)
+        secs = len(wav) / sr
+        save_wav(out_wav, wav, sr)
+        note = str(out_wav)
+        if ref is not None:
+            n = min(len(ref), len(wav))
+            corr = float(np.corrcoef(ref[:n], wav[:n])[0, 1]) if n > 1 else float('nan')
+            note += f'  (fp32과 파형 상관 {corr:.3f})'
+        print(f'{label:<28}{dir_mb(d):>9.1f}{ts:>9.2f}{secs:>8.2f}{ts / max(secs, 1e-3):>7.2f}   {note}')
+        return wav
+    except Exception as e:  # noqa: BLE001
+        print(f'{label:<28}{dir_mb(d):>9.1f}   실패: {type(e).__name__}: {str(e)[:200]}')
+        return None
+
+
+def header(steps):
+    print(f'\n같은 문장 합성 비교 (CPU, steps={steps}): "{TEST_TEXT}"')
+    print(f'{"조합":<28}{"MB":>9}{"합성(s)":>9}{"음성(s)":>8}{"RTF":>7}   결과')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--src', type=Path, help='이미 받아 둔 tts 폴더(onnx/, voice_styles/ 포함)')
     ap.add_argument('--work', type=Path, default=Path('work'), help='작업 폴더')
-    ap.add_argument('--steps', type=int, default=8)
+    ap.add_argument('--steps', type=int, default=5, help='앱의 휴대폰 기본값과 같은 5')
     ap.add_argument('--keep', nargs='*', default=[], choices=NAMES,
-                    help='8비트로 바꾸지 않고 32비트로 둘 파일(음질이 나쁠 때). 예: --keep vocoder')
+                    help='8비트로 바꾸지 않고 파일 전체를 32비트로 둘 파일. 예: --keep vocoder')
+    ap.add_argument('--no-conv', nargs='*', default=[], choices=NAMES,
+                    help='MatMul/Gemm 만 8비트로, Conv 는 32비트로 둘 파일. 예: --no-conv vocoder')
+    ap.add_argument('--compare', action='store_true', help='조합별 wav 를 work/cmp/ 에 만들어 비교만 함')
     args = ap.parse_args()
 
     work = args.work
     src = args.src or download(work / 'hf')
     fp32 = src / 'onnx'
     voices = src / 'voice_styles'
-    out8 = work / 'int8'
-    out8.mkdir(parents=True, exist_ok=True)
-    for name in ['tts.json', 'unicode_indexer.json']:
-        shutil.copy(fp32 / name, out8 / name)
+    cache = work / 'q'
+    cache.mkdir(parents=True, exist_ok=True)
 
-    for n in NAMES:
-        if n in args.keep:
-            print(f'32비트 유지: {n}')
-            shutil.copy(fp32 / f'{n}.onnx', out8 / f'{n}.onnx')
-        else:
-            print(f'변환 중: {n}')
-            to_int8(fp32 / f'{n}.onnx', out8 / f'{n}.onnx')
+    if args.compare:
+        V, E = 'vocoder', 'vector_estimator'
+        combos = [
+            ('A 전부 8비트', {}),
+            ('B vocoder Conv 32비트', {V: 'mm'}),
+            ('C vocoder 전체 32비트', {V: 'fp32'}),
+            ('D vocoder+VE Conv 32비트', {V: 'mm', E: 'mm'}),
+            ('E Conv 전부 32비트', {n: 'mm' for n in NAMES}),
+        ]
+        cmp = work / 'cmp'
+        dirs = []
+        for label, over in combos:
+            plan = {n: over.get(n, 'all') for n in NAMES}
+            d = cmp / label.split()[0]
+            if d.exists():
+                shutil.rmtree(d)
+            build(fp32, cache, d, plan)
+            dirs.append((label, d))
+        header(args.steps)
+        ref = compare_line('fp32 (원본)', fp32, voices, args.steps, None, cmp / 'fp32.wav')
+        for label, d in dirs:
+            compare_line(label, d, voices, args.steps, ref, cmp / f'{label.split()[0]}.wav')
+        print('\nwork/cmp/ 의 wav 를 들어 보고, 잡음 없는 것 중 가장 작은 조합으로 다시 실행하세요:')
+        print('  B → python tools/convert_models.py --no-conv vocoder')
+        print('  C → python tools/convert_models.py --keep vocoder')
+        print('  D → python tools/convert_models.py --no-conv vocoder vector_estimator')
+        print('  E → python tools/convert_models.py --no-conv duration_predictor text_encoder vector_estimator vocoder')
+        return
+
+    plan = {n: 'fp32' if n in args.keep else 'mm' if n in args.no_conv else 'all' for n in NAMES}
+    out8 = work / 'int8'
+    if out8.exists():
+        shutil.rmtree(out8)
+    build(fp32, cache, out8, plan)
     print('\n파일 크기(MB)   32비트 → 8비트')
     for n in NAMES:
         a, b = (fp32 / f'{n}.onnx').stat().st_size / 1048576, (out8 / f'{n}.onnx').stat().st_size / 1048576
         print(f'  {n:<20}{a:>8.1f} → {b:>7.1f}')
 
-    print(f'\n같은 문장 합성 비교 (CPU, steps={args.steps}): "{TEST_TEXT}"')
-    print(f'{"모델":<6}{"크기(MB)":>10}{"로딩(s)":>10}{"합성(s)":>10}{"음성(s)":>10}{"RTF":>8}   결과')
-    ref = None
-    for label, d in [('fp32', fp32), ('int8', out8)]:
-        try:
-            wav, sr, tl, ts = synth(d, voices, TEST_TEXT, args.steps)
-            secs = len(wav) / sr
-            path = work / f'test-{label}.wav'
-            save_wav(path, wav, sr)
-            note = str(path)
-            if ref is None:
-                ref = wav
-            else:
-                n = min(len(ref), len(wav))
-                corr = float(np.corrcoef(ref[:n], wav[:n])[0, 1]) if n > 1 else float('nan')
-                note += f'  (fp32과 파형 상관 {corr:.3f}, 참고용: 1에 가까울수록 비슷)'
-            print(f'{label:<6}{dir_mb(d):>10.1f}{tl:>10.1f}{ts:>10.2f}{secs:>10.2f}{ts / max(secs, 1e-3):>8.2f}   {note}')
-        except Exception as e:  # noqa: BLE001
-            print(f'{label:<6}{dir_mb(d):>10.1f}   실패: {type(e).__name__}: {str(e)[:200]}')
-            print('       → 이 변환본은 CPU(= 브라우저 WASM)에서 안 돌 가능성이 큽니다. 올리지 마세요.')
+    header(args.steps)
+    ref = compare_line('fp32', fp32, voices, args.steps, None, work / 'test-fp32.wav')
+    if compare_line('int8', out8, voices, args.steps, ref, work / 'test-int8.wav') is None:
+        print('       → 이 변환본은 CPU(= 브라우저 WASM)에서 안 돌 가능성이 큽니다. 올리지 마세요.')
 
-    kept = f', 32비트 유지: {", ".join(args.keep)}' if args.keep else ''
-    make_export(src, out8, Path('export') / 'tts-int8', f'8비트(INT8 동적 양자화, QUInt8, MatMul/Gemm/Conv 가중치{kept})')
+    extra = plan_label(plan)
+    make_export(src, out8, Path('export') / 'tts-int8',
+                f'8비트(INT8 동적 양자화, QUInt8, MatMul/Gemm/Conv 가중치{", " + extra if extra else ""})')
     print('\n업로드 폴더: export/tts-int8')
-    print('test-fp32.wav 와 test-int8.wav 를 들어 보고 음질이 괜찮으면 (지직거리면 --keep vocoder 로 다시 실행):')
+    print('test-fp32.wav 와 test-int8.wav 를 들어 보고 잡음이 없으면 export/tts-int8 을 올리세요.')
+    print('잡음이 있으면: python tools/convert_models.py --compare')
     print(f'  huggingface-cli upload {REPO} ./export/tts-int8 tts-int8')
 
 
