@@ -56,6 +56,9 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 - 전부 8비트(약 105MiB)는 vocoder의 Conv 8비트화로 잡음이 커서 쓰지 않습니다. 지금 올린 `tts-int8`(HF `71800e5`)은 `--keep vocoder`로 vocoder만 32비트, 약 177MiB입니다(`python tools/convert_models.py --compare` 결과로 결정, 2026-09-28).
 - 노트북 CPU(onnxruntime)에서는 32비트와 8비트의 합성 속도가 거의 같았습니다(RTF 0.10~0.13). 8비트의 이득은 크기·메모리입니다.
 
+### 휴대폰·태블릿 GPU는 WebGPU를 쓰지 않음
+Tab S8(Qualcomm Adreno)에서 WebGPU 32비트로 돌리면 목소리 대신 "딴 딴" 소리만 났습니다(2026-09-28). 그래서 GPU 제조사가 Qualcomm·ARM(Mali)·Imagination·Samsung이면 WebGPU를 건너뛰고 WASM 8비트를 씁니다(`tts.js`, 진단 로그의 `[tts] GPU:` 줄). 비교·진단용으로 주소 뒤에 `?ep=webgpu` 또는 `?ep=wasm`을 붙여 강제할 수 있습니다.
+
 ### S24+ 측정 기록 (2026-09-28, Android Chrome, WASM, steps 5)
 | 구성 | threads | 합성 / 음성 |
 | --- | --- | --- |

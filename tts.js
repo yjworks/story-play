@@ -233,8 +233,21 @@ export class SupertonicTTS {
     // 그 위치의 모델이 이 기기에서 안 열리면 다음 후보(예: 8비트 → 32비트)로 넘어감
     const tried = [];
     // WebGPU 어댑터가 실제로 잡히는지 먼저 확인(navigator.gpu 가 있어도 GPU를 못 쓰는 기기가 있음)
+    // 휴대폰·태블릿 GPU(Qualcomm Adreno, ARM Mali 등)는 WebGPU로 돌리면 결과가 틀려 "딴 딴" 소리만 남(Tab S8 확인, 2026-09-28).
+    // 그래서 이런 GPU는 WebGPU를 건너뛰고 WASM 8비트(S24+에서 RTF 약 0.55 확인)를 씀.
+    // 주소 뒤 ?ep=webgpu / ?ep=wasm 으로 강제할 수 있음(비교·진단용).
+    const force = new URLSearchParams(search).get('ep');
     const eps = [];
-    try { if (navigator.gpu && await navigator.gpu.requestAdapter()) eps.push('webgpu'); } catch (_) { /* 없음 */ }
+    try {
+      const adapter = force !== 'wasm' && navigator.gpu ? await navigator.gpu.requestAdapter() : null;
+      if (adapter) {
+        const info = adapter.info || (adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : {}) || {};
+        const gpu = `${info.vendor || '?'} ${info.architecture || ''}`.trim();
+        const mobileGpu = /qualcomm|adreno|arm|mali|imagination|powervr|samsung/i.test(`${info.vendor} ${info.architecture}`);
+        console.info(`[tts] GPU: ${gpu}${mobileGpu ? ' (휴대폰·태블릿 GPU)' : ''}`);
+        if (force === 'webgpu' || !mobileGpu) eps.push('webgpu');
+      }
+    } catch (_) { /* 없음 */ }
     eps.push('wasm');
     console.info(`[tts] 계산 방식 후보: ${eps.join(' → ')}`);
     for (const ep of eps) {
