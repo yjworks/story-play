@@ -847,4 +847,10 @@ tts.load((msg) => { el.engine.textContent = msg; })
       ? '음성 엔진을 불러오지 못했어요 (모델 파일을 받지 못함)'
       : `음성 엔진을 불러오지 못했어요: ${e.message}`;
     el.engine.title = e.message;
+    el.engine.dataset.detail = `${e.name}: ${e.message}\n\nWebGPU: ${'gpu' in navigator ? '있음' : '없음'} · ${navigator.userAgent}`;
+    el.engine.classList.add('has-detail');
   });
+// 오류 문구를 누르면 자세한 원인을 보여 줌(휴대폰에서는 툴팁·콘솔을 볼 수 없으므로)
+const showEngineDetail = () => { if (el.engine.dataset.detail) alert(el.engine.dataset.detail); };
+el.engine.addEventListener('click', showEngineDetail);
+$('coverEngine').addEventListener('click', showEngineDetail);

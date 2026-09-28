@@ -345,3 +345,5 @@ button { cursor: pointer; }
 @keyframes new-book { from { opacity: 0; transform: translateX(40px) scale(0.96); } to { opacity: 1; transform: none; } }
 @keyframes book-away { to { opacity: 0; transform: translateX(-60px) scale(0.94); } }
 .book .pg { animation: none; } /* 쪽 넘김은 flip 효과가 맡음 */
+.engine.has-detail, .cover-engine:not(:empty) { cursor: pointer; }
+.engine.has-detail { text-decoration: underline dotted; }

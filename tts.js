@@ -41,7 +41,9 @@ async function openCache() {
   try { return await caches.open(CACHE_NAME); } catch (_) { return null; }
 }
 
-// 한 번 받은 파일은 Cache Storage에 보관 → 다음 방문부터 네트워크 없이 로드
+// 한 번 받은 파일은 Cache Storage에 보관 → 다음 방문부터 네트워크 없이 로드.
+// 큰 모델 파일은 받는 즉시 디스크(Cache Storage)로 흘려 보내고, 다 받은 뒤 한 번만 메모리로 읽음.
+// (메모리에 조각·합본·복사본을 동시에 들고 있으면 iPhone Safari처럼 탭 메모리가 작은 곳에서 실패함)
 async function fetchCached(url, onProgress) {
   const cache = await openCache();
   if (cache) {
@@ -55,29 +57,52 @@ async function fetchCached(url, onProgress) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`다운로드 실패 (${res.status}): ${url}`);
   const total = Number(res.headers.get('content-length')) || 0;
-  let buf;
-  if (res.body && onProgress) {
-    const reader = res.body.getReader();
-    const parts = [];
+  if (cache && res.body && typeof TransformStream === 'function') {
     let got = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      parts.push(value);
-      got += value.byteLength;
-      onProgress(got, total, false);
+    const counter = new TransformStream({
+      transform(chunk, ctl) {
+        got += chunk.byteLength;
+        onProgress?.(got, total, false);
+        ctl.enqueue(chunk);
+      },
+    });
+    try {
+      const type = res.headers.get('content-type') || 'application/octet-stream';
+      await cache.put(url, new Response(res.body.pipeThrough(counter), { headers: { 'content-type': type } }));
+      const hit = await cache.match(url);
+      if (hit) return await hit.arrayBuffer();
+    } catch (e) {
+      // 저장 공간 부족 등으로 캐시에 못 쓰면, 캐시 없이 다시 받아 메모리로 읽음
+      console.warn('[tts] 캐시에 저장하지 못해 메모리로 받음', url, e);
+      try { await cache.delete(url); } catch (_) { /* ignore */ }
+      const again = await fetch(url);
+      if (!again.ok) throw new Error(`다운로드 실패 (${again.status}): ${url}`);
+      return readAll(again, total, onProgress);
     }
-    const out = new Uint8Array(got);
-    let off = 0;
-    for (const p of parts) { out.set(p, off); off += p.byteLength; }
-    buf = out.buffer;
-  } else {
-    buf = await res.arrayBuffer();
   }
-  if (cache) {
-    try { await cache.put(url, new Response(buf.slice(0))); } catch (_) { /* quota */ }
+  return readAll(res, total, onProgress);
+}
+
+// 캐시 없이 받을 때: 크기를 알면 한 번에 자리를 잡아 채움(합치기 복사 없음)
+async function readAll(res, total, onProgress) {
+  if (!res.body) return res.arrayBuffer();
+  const reader = res.body.getReader();
+  let out = total ? new Uint8Array(total) : null;
+  const parts = [];
+  let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (out && got + value.byteLength <= out.byteLength) out.set(value, got);
+    else { if (out) { parts.push(out.subarray(0, got)); out = null; } parts.push(value); }
+    got += value.byteLength;
+    onProgress?.(got, total, false);
   }
-  return buf;
+  if (out) return got === out.byteLength ? out.buffer : out.slice(0, got).buffer;
+  const joined = new Uint8Array(got);
+  let off = 0;
+  for (const p of parts) { joined.set(p, off); off += p.byteLength; }
+  return joined.buffer;
 }
 
 async function fetchJSON(url) {
@@ -163,7 +188,8 @@ export class SupertonicTTS {
       ['vec', 'vector_estimator.onnx'],
       ['voc', 'vocoder.onnx'],
     ];
-    let bufs = null;
+    // 1) 모델 위치 고르기: 설정·문자표·목소리 파일이 모두 있는 첫 위치
+    let found = false;
     const tried = [];
     for (const src of modelSources()) {
       for (const onnxDir of [`${src.base}/onnx`, src.base]) {
@@ -178,51 +204,57 @@ export class SupertonicTTS {
           const indexer = await fetchJSON(`${onnxDir}/unicode_indexer.json`);
           const voiceDir = `${src.base}/voice_styles`;
           await fetchJSON(`${voiceDir}/${VOICES[0]}.json`);
-          const got = {};
-          for (let i = 0; i < names.length; i++) {
-            const [key, file] = names[i];
-            got[key] = await fetchCached(`${onnxDir}/${file}`, (n, total, cached) => {
-              const mb = (x) => (x / 1048576).toFixed(1);
-              const size = total ? `${mb(n)} / ${mb(total)} MB` : `${mb(n)} MB`;
-              onStatus?.(cached
-                ? `저장된 모델 사용 (${i + 1}/4)`
-                : `모델 내려받는 중 (${i + 1}/4, ${src.name}) ${size}`);
-            });
-          }
           this.cfgs = cfgs;
           this.proc = new UnicodeProcessor(indexer);
           this.onnxDir = onnxDir;
           this.voiceDir = voiceDir;
           this.source = src.name;
-          bufs = got;
+          found = true;
           break;
         } catch (e) {
-          tried.push(`${onnxDir}: ${e.message}`);
+          tried.push(`${onnxDir}: ${e.name === 'Error' ? '' : `${e.name} `}${e.message}`);
           if (!src.local) console.warn(`[tts] 모델 위치 건너뜀: ${onnxDir}`, e);
         }
       }
-      if (bufs) break;
+      if (found) break;
     }
-    if (!bufs) throw new Error(`모델을 찾지 못했어요. ${tried.join(' / ')}`);
+    if (!found) throw new Error(`모델을 찾지 못했어요. ${tried.join(' / ')}`);
     console.info(`[tts] 모델 위치: ${this.onnxDir} (${this.source})`);
 
+    // 2) 모델 파일을 하나씩 받아(또는 캐시에서 읽어) 바로 세션을 만들고, 버퍼는 곧바로 놓아 줌
     const create = async (ep) => {
       const s = {};
-      for (const [key] of names) {
-        s[key] = await ort.InferenceSession.create(new Uint8Array(bufs[key]), {
-          executionProviders: [ep],
-          graphOptimizationLevel: 'all',
+      for (let i = 0; i < names.length; i++) {
+        const [key, file] = names[i];
+        let buf = await fetchCached(`${this.onnxDir}/${file}`, (n, total, cached) => {
+          const mb = (x) => (x / 1048576).toFixed(1);
+          const size = total ? `${mb(n)} / ${mb(total)} MB` : `${mb(n)} MB`;
+          onStatus?.(cached
+            ? `저장된 모델 불러오는 중 (${i + 1}/4)`
+            : `모델 내려받는 중 (${i + 1}/4, ${this.source}) ${size}`);
         });
+        onStatus?.(`음성 엔진 준비 중 (${i + 1}/4)`);
+        try {
+          s[key] = await ort.InferenceSession.create(new Uint8Array(buf), {
+            executionProviders: [ep],
+            graphOptimizationLevel: 'all',
+          });
+        } catch (e) {
+          // 이미 만든 세션은 풀어 줘서, 다음 방식(WASM)으로 넘어갈 때 메모리를 비워 둠
+          for (const done of Object.values(s)) { try { await done.release(); } catch (_) { /* ignore */ } }
+          throw e;
+        }
+        buf = null;
       }
       return s;
     };
 
-    onStatus?.('음성 엔진 준비 중');
     if (navigator.gpu) {
       try {
         this.sessions = await create('webgpu');
         this.backend = 'WebGPU';
       } catch (e) {
+        if (/다운로드 실패|Failed to fetch|Load failed|NetworkError/i.test(e.message)) throw e;
         console.warn('WebGPU 실패, WASM으로 전환', e);
       }
     }
