@@ -84,6 +84,14 @@ button { cursor: pointer; }
   .shelf-close { border: 0; background: none; font-size: 1.2rem; padding: 4px 8px; }
 }
 
+.filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.tag {
+  border: 1.5px solid var(--line); background: var(--sheet); border-radius: 999px;
+  padding: 5px 12px; font-family: var(--font-title); font-size: 1rem; line-height: 1.2;
+}
+.tag .n { margin-left: 5px; font-family: var(--font-body); font-size: 0.75rem; color: var(--ink-soft); }
+.tag[aria-pressed="true"] { background: var(--lamp); border-color: var(--lamp); color: #2a2f3d; }
+.tag[aria-pressed="true"] .n { color: #2a2f3d; }
 .story-list { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 4px; }
 .story-list li { display: flex; align-items: center; gap: 4px; }
 .story-list .pick {

@@ -11,6 +11,7 @@ const VOICE_LABEL = {
 const USER_KEY = 'story-player:user-stories';
 const REPEAT_KEY = 'story-player:repeat';
 const PLAYLIST_KEY = 'story-player:playlist';
+const FILTER_KEY = 'story-player:filter';
 const LOOKAHEAD = 2; // 재생 중 미리 합성해 둘 문장 수 (이야기를 고르면 첫 문장 + LOOKAHEAD 문장도 미리 합성)
 const NARRATION_PER_PARA = 3; // 해설 문장을 한 문단에 몇 개까지 이어 붙일지
 const GAP_MS = 250; // 문장 사이 쉼
@@ -47,6 +48,7 @@ let ready = false;
 let stories = [...STORIES, ...loadUserStories()];
 let story = null;
 let playlist = loadPlaylist(); // 재생목록: 이야기 id 배열 (같은 이야기를 여러 번 담아도 됨)
+let srcFilter = loadFilter(); // 이야기 목록 모음 태그: 'all' 또는 source 값(탈무드, 이솝우화, 내 이야기 …)
 let plPos = -1; // 지금 재생목록의 몇 번째를 듣는 중인지 (-1: 재생목록 밖)
 let seq = []; // 읽을 순서: 본문 + 마무리 질문. { who, text, ask, q }
 let sents = []; // 문장 번호 → 화면의 <span>/<p>
@@ -242,14 +244,42 @@ el.plClear.onclick = () => {
   renderPlaylist();
   renderStoryList();
 };
-document.querySelectorAll('.plist-add [data-src]').forEach((b) => {
-  b.onclick = () => {
-    stories.filter((s) => s.source === b.dataset.src && !playlist.includes(s.id)).forEach((s) => playlist.push(s.id));
-    savePlaylist();
-    renderPlaylist();
-    renderStoryList();
-  };
-});
+// 지금 목록에 보이는(태그로 거른) 이야기 가운데 아직 안 담긴 것을 모두 담기
+$('plAddShown').onclick = () => {
+  shownStories().filter((s) => !playlist.includes(s.id)).forEach((s) => playlist.push(s.id));
+  savePlaylist();
+  renderPlaylist();
+  renderStoryList();
+};
+
+/* ---------- 모음 태그 (전체 / 탈무드 / 이솝우화 …) ---------- */
+// 태그는 stories.js 의 source 값에서 자동으로 만듦 → 새 모음을 추가해도 코드 수정 없음
+function loadFilter() {
+  try { return localStorage.getItem(FILTER_KEY) || 'all'; } catch (_) { return 'all'; }
+}
+function sources() {
+  return [...new Set(stories.map((s) => s.source))];
+}
+function shownStories() {
+  return srcFilter === 'all' ? stories : stories.filter((s) => s.source === srcFilter);
+}
+function renderFilter() {
+  if (srcFilter !== 'all' && !sources().includes(srcFilter)) srcFilter = 'all';
+  const tags = [['all', '전체', stories.length], ...sources().map((src) => [src, src, stories.filter((s) => s.source === src).length])];
+  $('srcFilter').replaceChildren(...tags.map(([val, label, n]) => {
+    const b = document.createElement('button');
+    b.className = 'tag';
+    b.setAttribute('aria-pressed', String(srcFilter === val));
+    b.append(label, Object.assign(document.createElement('span'), { className: 'n', textContent: n }));
+    b.onclick = () => {
+      srcFilter = val;
+      try { localStorage.setItem(FILTER_KEY, val); } catch (_) { /* ignore */ }
+      renderFilter();
+      renderStoryList();
+    };
+    return b;
+  }));
+}
 
 /* ---------- 재생 루프 ---------- */
 async function run(from) {
@@ -317,7 +347,7 @@ function jump(i) {
 
 /* ---------- 렌더링 ---------- */
 function renderStoryList() {
-  el.storyList.replaceChildren(...stories.map((s) => {
+  el.storyList.replaceChildren(...shownStories().map((s) => {
     const li = document.createElement('li');
     const b = document.createElement('button');
     b.className = 'pick';
@@ -598,6 +628,7 @@ function selectStory(id, pos = -1) {
   idx = 0;
   el.storyTitle.textContent = story.title;
   el.storySource.textContent = story.source;
+  renderFilter();
   renderStoryList();
   renderPlaylist();
   window.scrollTo({ top: 0 });
