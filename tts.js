@@ -18,9 +18,12 @@ const hf = (repo, rev, path = '') => `https://huggingface.co/${repo}/resolve/${r
 const EDGE_LAB = { name: 'edge-lab', base: hf('leeyunjai/edge-lab', 'main', 'tts') };
 // 8비트 변환본(tools/convert_models.py). WASM(CPU)용: 가볍고 CPU 정수 연산이라 휴대폰에 유리.
 // WebGPU에서는 8비트 연산(MatMulInteger/ConvInteger)을 GPU가 못 해서 CPU로 넘겨 매우 느려지므로 32비트를 먼저 씀.
-// INT8_REV: 8비트 파일을 다시 올리면 그 커밋의 전체 해시로 바꿀 것 → 주소가 바뀌어 모든 기기가 새 파일을 받고 예전 파일은 정리됨
-const INT8_REV = 'main';
+// INT8_REV: 8비트 파일을 다시 올리면 그 커밋 해시로 바꿀 것 → 주소가 바뀌어 모든 기기가 새 파일을 받고 예전 파일은 정리됨
+// 71800e5 = vocoder 만 32비트로 둔 변환본(--keep vocoder, 약 177MB). 전부 8비트는 vocoder 에서 잡음이 나서 안 씀.
+// 짧은 해시를 HF가 못 알아들으면 main 으로 넘어감(EDGE_LAB_INT8_MAIN).
+const INT8_REV = '71800e5';
 const EDGE_LAB_INT8 = { name: 'edge-lab 8비트', base: hf('leeyunjai/edge-lab', INT8_REV, 'tts-int8') };
+const EDGE_LAB_INT8_MAIN = { name: 'edge-lab 8비트(main)', base: hf('leeyunjai/edge-lab', 'main', 'tts-int8') };
 const OFFICIAL = {
   name: '공식 아카이브',
   base: hf('supertone-oss-archive/supertonic-3', 'aafc6e32416a594460b32413efc49d7fe4ce6d46'),
@@ -32,7 +35,9 @@ const LOCAL = { name: '자체 호스팅', base: './assets', local: true };
 function modelSources(search = self.location?.search || '', ep = 'wasm') {
   const q = new URLSearchParams(search).get('model');
   const m = q?.match(/^([\w.-]+\/[\w.-]+)(?:@([\w.-]+))?(?:\/([\w./-]+))?$/);
-  const list = ep === 'webgpu' ? [LOCAL, EDGE_LAB, EDGE_LAB_INT8, OFFICIAL] : [LOCAL, EDGE_LAB_INT8, EDGE_LAB, OFFICIAL];
+  const list = ep === 'webgpu'
+    ? [LOCAL, EDGE_LAB, EDGE_LAB_INT8, EDGE_LAB_INT8_MAIN, OFFICIAL]
+    : [LOCAL, EDGE_LAB_INT8, EDGE_LAB_INT8_MAIN, EDGE_LAB, OFFICIAL];
   // ?model= 로 지정한 위치를 먼저 시도하고, 실패하면 기본 후보로 넘어감
   if (m) list.unshift({ name: q, base: hf(m[1], m[2] || 'main', m[3] || '') });
   return list;
