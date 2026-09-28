@@ -570,7 +570,25 @@ function renderPlayState() {
   el.play.textContent = playing ? '❚❚' : '▶';
   el.play.setAttribute('aria-label', playing ? '일시정지' : '재생');
   el.play.disabled = !ready || !story;
+  syncWakeLock();
 }
+
+/* ---------- 듣는 동안 화면 꺼짐 방지 (Screen Wake Lock) ---------- */
+// 재생 중에만 화면을 켜 두고, 멈추면 놓아 줌. 다른 앱에 갔다 오면 브라우저가 풀어 버리므로 돌아올 때 다시 요청.
+let wakeLock = null;
+async function syncWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    if (playing && !wakeLock && document.visibilityState === 'visible') {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!playing && wakeLock) {
+      await wakeLock.release();
+      wakeLock = null;
+    }
+  } catch (_) { /* 절전 모드 등으로 거절될 수 있음 */ }
+}
+document.addEventListener('visibilitychange', syncWakeLock);
 function selectStory(id, pos = -1) {
   pause();
   cancelPending();

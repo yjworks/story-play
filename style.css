@@ -234,6 +234,18 @@ button { cursor: pointer; }
 .repeat { margin-left: auto; }
 .repeat select, .quality select { border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 4px 6px; }
 .progress { font-size: 0.9rem; color: var(--ink-soft); min-width: 4em; text-align: right; }
+/* 좁은 화면(휴대폰): 재생바를 한 줄로 유지해 쪽 넘기기 버튼을 가리지 않게 */
+@media (max-width: 600px) {
+  .transport { flex-wrap: nowrap; gap: 6px; }
+  .tbtn { width: 40px; height: 40px; white-space: nowrap; font-size: 0.72rem; letter-spacing: -0.12em; }
+  .top { flex-wrap: wrap; row-gap: 2px; }
+  .engine { order: 9; flex-basis: 100%; text-align: left; font-size: 0.78rem; }
+  .tbtn.play { width: 50px; height: 50px; }
+  .quality { display: none; }
+  .repeat { font-size: 0; gap: 0; }
+  .repeat select { font-size: 0.85rem; }
+  .progress { min-width: 3.2em; font-size: 0.8rem; }
+}
 
 /* ---------- 내 이야기 넣기 ---------- */
 .editor { border: 0; border-radius: var(--radius-lg); padding: 0; width: min(560px, 92vw); background: var(--sheet); color: var(--ink); }
