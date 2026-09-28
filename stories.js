@@ -2,5 +2,7 @@
 // 각 파일의 형식은 stories/_format.md, 검사는 `node tools/check-stories.mjs`.
 import talmud from './stories/talmud.js';
 import aesop from './stories/aesop.js';
+import andersen from './stories/andersen.js';
+import gosa from './stories/gosa.js';
 
-export const STORIES = [...talmud, ...aesop];
+export const STORIES = [...talmud, ...aesop, ...andersen, ...gosa];
