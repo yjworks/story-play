@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>이야기 극장</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>이야기 극장</h1>
+    <p id="engine" class="engine" aria-live="polite">음성 엔진 불러오는 중</p>
+  </header>
+
+  <div class="layout">
+    <aside class="shelf">
+      <h2>이야기 고르기</h2>
+      <ul id="storyList" class="story-list"></ul>
+      <button id="openEditor" class="ghost">내 이야기 넣기</button>
+    </aside>
+
+    <main class="stage">
+      <div class="stage-head">
+        <p id="storySource" class="source"></p>
+        <h2 id="storyTitle" class="title"></h2>
+      </div>
+
+      <section class="cast" aria-label="등장인물과 목소리">
+        <div id="castList" class="cast-list"></div>
+      </section>
+
+      <section class="spotlight" aria-live="polite">
+        <p id="spotName" class="spot-name"></p>
+        <p id="spotText" class="spot-text">이야기를 고르고 재생을 눌러 주세요.</p>
+      </section>
+
+      <ol id="script" class="script"></ol>
+    </main>
+  </div>
+
+  <nav class="transport" aria-label="재생 조작">
+    <button id="prevBtn" class="tbtn" aria-label="이전 줄">◀◀</button>
+    <button id="playBtn" class="tbtn play" aria-label="재생" disabled>▶</button>
+    <button id="nextBtn" class="tbtn" aria-label="다음 줄">▶▶</button>
+    <label class="quality">목소리 품질
+      <select id="steps">
+        <option value="5">빠르게</option>
+        <option value="8" selected>보통</option>
+        <option value="12">좋게</option>
+      </select>
+    </label>
+    <span id="progress" class="progress"></span>
+  </nav>
+
+  <dialog id="editor" class="editor">
+    <form method="dialog" class="editor-form">
+      <h2>내 이야기 넣기</h2>
+      <label>제목 <input id="edTitle" required placeholder="예: 개미와 베짱이"></label>
+      <label>이야기
+        <textarea id="edBody" rows="12" required placeholder="해설: 여름 내내 개미는 부지런히 일했어요.&#10;베짱이: 개미야, 같이 노래나 부르자!&#10;개미: 겨울을 준비해야 해."></textarea>
+      </label>
+      <p class="hint">한 줄에 한 대사씩 “이름: 대사”로 적어 주세요. 이름이 없는 줄은 해설이 읽어요. 대사 안에 &lt;laugh&gt; &lt;sigh&gt; &lt;breath&gt;를 넣으면 웃음, 한숨, 숨소리가 들어가요.</p>
+      <div class="editor-actions">
+        <button value="cancel" class="ghost" formnovalidate>닫기</button>
+        <button id="edSave" value="save" class="solid">추가하기</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
