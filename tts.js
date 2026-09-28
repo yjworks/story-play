@@ -1,8 +1,9 @@
 // Supertonic 3 browser inference (ONNX Runtime Web, WebGPU → WASM fallback)
 // Based on supertone-inc/supertonic web/helper.js (MIT). Typed-array rewrite + Cache API model storage.
-import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.webgpu.min.mjs';
+// onnxruntime-web 1.22.0 (npm 패키지 dist/ 그대로)를 저장소 vendor/ort/ 에 두고 같은 사이트에서 불러옴 → CDN 의존 없음
+import * as ort from './vendor/ort/ort.webgpu.min.mjs';
 
-ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/';
+ort.env.wasm.wasmPaths = new URL('./vendor/ort/', import.meta.url).href;
 ort.env.wasm.numThreads = self.crossOriginIsolated
   ? Math.min(4, navigator.hardwareConcurrency || 1)
   : 1;

@@ -37,7 +37,9 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 
 - 주소 뒤에 `?model=계정/저장소[@리비전][/폴더]`를 붙이면 그 위치를 가장 먼저 시도하고, 실패하면 위 기본 순서로 넘어갑니다. 예: `?model=leeyunjai/edge-lab@main/tts`
 - 받은 파일은 Cache Storage(`supertonic3-aafc6e3`)에 URL 단위로 저장합니다. edge-lab은 `main`을 따라가므로, 저장소 파일을 바꾸면 `tts.js`의 `CACHE_NAME`을 바꿔야 새 파일을 받습니다. 고정하려면 `EDGE_LAB`의 `'main'`을 전체 커밋 해시로 바꾸세요.
-- 런타임: onnxruntime-web 1.22.0 고정. `dist/ort.webgpu.min.mjs`와 WASM 파일이 npm 1.22.0 패키지에 있는 것은 확인했습니다.
+- 런타임: onnxruntime-web 1.22.0 고정. npm 패키지 `dist/`의 `ort.webgpu.min.mjs`, `ort-wasm-simd-threaded.jsep.mjs`, `ort-wasm-simd-threaded.jsep.wasm`(합계 약 22MB)을 수정 없이 `vendor/ort/`에 넣어 같은 사이트에서 불러옵니다(CDN 의존 없음). 헤드리스 Chromium에서 작은 테스트 모델로 WASM·WebGPU 실행을 확인했습니다.
+- 글꼴: Jua와 Noto Sans KR(400, 500)의 woff2를 `vendor/fonts/`에 넣었습니다(Fontsource 5.3.0, 약 5MB). 한글은 유니코드 범위별로 나뉘어 있어 화면에 나온 글자가 든 파일만 받습니다(Google Fonts 의존 없음).
+- 외부로 나가는 요청은 모델 파일(huggingface.co)뿐입니다.
 - 라이선스: 모델은 BigScience Open RAIL-M(원문 `licenses/OpenRAIL-M.txt`), 예제 코드는 MIT입니다. 제3자 고지는 `THIRD_PARTY_NOTICES.md`, 사용 제한을 담은 이용약관 초안은 `TERMS_DRAFT.md`에 있습니다.
 - edge-lab 저장소에는 AGPL-3.0 태그가 붙어 있습니다. 모델 파일은 원래 Open RAIL-M이라 AGPL로 바꿀 수 없으므로, 태그를 고치고 `tts/` 폴더에 Open RAIL-M 원문을 함께 두는 것을 권장합니다(라이선스 4b: 받는 사람에게 사본 제공).
 - GitHub Pages는 파일당 100MB 제한이 있습니다. 자체 호스팅(`assets/`)을 쓸 때만 해당합니다.
@@ -50,6 +52,7 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 | `app.js` | 플레이어. 이야기를 고르면 첫 3줄을 미리 합성하고, 재생 중에는 다음 2줄을 미리 합성합니다. 목소리나 품질을 바꾸면 시작 전인 미리 합성은 버립니다. 대사 사이에 끊기면 `[player] … 대기`를 출력합니다 |
 | `index.html`, `style.css` | 화면. 한국어 줄바꿈은 `word-break: keep-all`로 어절 단위로 끊습니다 |
 | `licenses/`, `THIRD_PARTY_NOTICES.md`, `TERMS_DRAFT.md` | 라이선스 원문(Open RAIL-M, MIT 2종), 제3자 고지, 이용약관 초안. 화면 오른쪽 위 "🤖 AI 목소리"를 누르면 AI 음성 고지와 라이선스 링크가 나옴 |
+| `vendor/ort/`, `vendor/fonts/` | onnxruntime-web 1.22.0 런타임, 글꼴(woff2 + `fonts.css`) |
 | `icons/`, `manifest.webmanifest` | 파비콘(SVG, 32px), 홈 화면 아이콘(180/192/512px, 마스크형 512px), 앱 매니페스트. Chrome "홈 화면에 추가" 시 앱처럼 전체 화면으로 열림. 원본은 `icons/icon.svg`, `icons/maskable.svg` |
 
 화면의 "내 이야기 넣기"에서 `이름: 대사` 형식으로 붙여 넣으면 목소리를 자동으로 배정하고 localStorage에 저장합니다.

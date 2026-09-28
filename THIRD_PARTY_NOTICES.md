@@ -6,8 +6,9 @@
 | --- | --- | --- | --- |
 | Supertonic 3 모델 (ONNX 가중치, 설정, 목소리 프리셋 F1~F5·M1~M5) | 브라우저가 내려받아 기기에서 실행. 파일 수정 없음 | Supertone Inc. | BigScience Open RAIL-M → [`licenses/OpenRAIL-M.txt`](licenses/OpenRAIL-M.txt) |
 | Supertonic 웹 예제 코드 (`web/helper.js`) | `tts.js`가 이 코드를 바탕으로 다시 작성됨(중첩 배열 → typed array, Cache Storage, 모델 위치 선택, 합성 취소 추가) | Copyright (c) 2025 Supertone Inc. | MIT → [`licenses/Supertonic-code-MIT.txt`](licenses/Supertonic-code-MIT.txt) |
-| ONNX Runtime Web 1.22.0 | jsDelivr CDN에서 불러옴 | Copyright (c) Microsoft Corporation | MIT → [`licenses/onnxruntime-MIT.txt`](licenses/onnxruntime-MIT.txt) |
-| 글꼴 Jua, Noto Sans KR | Google Fonts에서 불러옴 | 각 글꼴 제작자 | SIL Open Font License 1.1 |
+| ONNX Runtime Web 1.22.0 | npm 패키지 `dist/`의 파일 3개를 수정 없이 `vendor/ort/`에 포함 | Copyright (c) Microsoft Corporation | MIT → [`licenses/onnxruntime-MIT.txt`](licenses/onnxruntime-MIT.txt) |
+| 글꼴 Jua | Fontsource `@fontsource/jua` 5.3.0의 woff2를 `vendor/fonts/`에 포함 | Copyright 2018 The BM JUA Project Authors | SIL OFL 1.1 → [`licenses/Jua-OFL.txt`](licenses/Jua-OFL.txt) |
+| 글꼴 Noto Sans KR (400, 500) | Fontsource `@fontsource/noto-sans-kr` 5.3.0의 woff2를 `vendor/fonts/`에 포함 | Google Inc. | SIL OFL 1.1 → [`licenses/NotoSansKR-OFL.txt`](licenses/NotoSansKR-OFL.txt) |
 | 이야기 원전 (이솝우화, 탈무드) | 줄거리만 참고, 문장은 모두 자체 각색 | 원전은 퍼블릭 도메인 | — |
 
 ## Supertonic 3 모델 사용 조건 (Open RAIL-M 요약)
