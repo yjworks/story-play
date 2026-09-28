@@ -37,8 +37,9 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 ## 모델
 실행할 때 아래 위치를 차례로 시도하고, 파일이 없거나 구성이 다르면 다음 위치로 넘어갑니다. 실제로 쓰는 위치는 상단 문구(`준비 완료 (WebGPU · edge-lab)`)와 콘솔 `[tts] 모델 위치:`에 나옵니다.
 1. `./assets` (자체 호스팅, 있을 때만)
-2. `leeyunjai/edge-lab`의 `tts/` 폴더, `main` 브랜치 (커밋 609ca32 "replace TTS with supertonic-3"에서 구성 확인: `onnx/`, `voice_styles/`)
-3. 공식 아카이브 `supertone-oss-archive/supertonic-3`, 고정 리비전 `aafc6e32416a594460b32413efc49d7fe4ce6d46`
+2. `leeyunjai/edge-lab`의 `tts-int8/` 폴더 (8비트 변환본, `tools/convert_models.py`로 만들어 올림. 없거나 이 기기에서 안 열리면 다음 후보로)
+3. `leeyunjai/edge-lab`의 `tts/` 폴더, `main` 브랜치 (커밋 609ca32 "replace TTS with supertonic-3"에서 구성 확인: `onnx/`, `voice_styles/`)
+4. 공식 아카이브 `supertone-oss-archive/supertonic-3`, 고정 리비전 `aafc6e32416a594460b32413efc49d7fe4ce6d46`
 
 - 주소 뒤에 `?model=계정/저장소[@리비전][/폴더]`를 붙이면 그 위치를 가장 먼저 시도하고, 실패하면 위 기본 순서로 넘어갑니다. 예: `?model=leeyunjai/edge-lab@main/tts`
 - 받은 파일은 Cache Storage(`supertonic3-aafc6e3`)에 URL 단위로 저장합니다. edge-lab은 `main`을 따라가므로, 저장소 파일을 바꾸면 `tts.js`의 `CACHE_NAME`을 바꿔야 새 파일을 받습니다. 고정하려면 `EDGE_LAB`의 `'main'`을 전체 커밋 해시로 바꾸세요.
@@ -48,6 +49,11 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 - 라이선스: 모델은 BigScience Open RAIL-M(원문 `licenses/OpenRAIL-M.txt`), 예제 코드는 MIT입니다. 제3자 고지는 `THIRD_PARTY_NOTICES.md`, 사용 제한을 담은 이용약관 초안은 `TERMS_DRAFT.md`에 있습니다.
 - edge-lab 저장소에는 AGPL-3.0 태그가 붙어 있습니다. 모델 파일은 원래 Open RAIL-M이라 AGPL로 바꿀 수 없으므로, 태그를 고치고 `tts/` 폴더에 Open RAIL-M 원문을 함께 두는 것을 권장합니다(라이선스 4b: 받는 사람에게 사본 제공).
 - GitHub Pages는 파일당 100MB 제한이 있습니다. 자체 호스팅(`assets/`)을 쓸 때만 해당합니다.
+
+## 8비트 모델 (휴대폰·태블릿용)
+- 32비트 원본은 약 400MB라 휴대폰에서 받기·올리기가 무겁습니다. `tools/convert_models.py`가 8비트(INT8 동적 양자화, MatMul/Gemm 가중치만)로 바꾸고, 같은 문장을 32비트·8비트로 합성해 속도와 wav를 비교한 뒤 `export/tts-int8` 업로드 폴더(라이선스 사본과 수정 사항 고지 포함)를 만듭니다.
+- 브라우저 런타임(onnxruntime-web 1.22.0)에서 8비트 모델이 WASM·WebGPU 모두 정상 동작하는 것을 작은 모델로 확인했습니다. 16비트는 16비트 연산을 지원하지 않는 GPU의 WebGPU에서 결과가 틀려 쓰지 않습니다.
+- 실제 모델의 크기·음질·기기별 속도는 변환 후 실측이 필요합니다.
 
 ## 파일
 | 파일 | 역할 |

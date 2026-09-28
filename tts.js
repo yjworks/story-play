@@ -16,6 +16,8 @@ ort.env.wasm.numThreads = self.crossOriginIsolated
 // 각 위치 안의 구성은 두 가지를 모두 받음: <위치>/onnx/*.onnx 또는 <위치>/*.onnx (목소리는 <위치>/voice_styles/*.json)
 const hf = (repo, rev, path = '') => `https://huggingface.co/${repo}/resolve/${rev}${path ? `/${path}` : ''}`;
 const EDGE_LAB = { name: 'edge-lab', base: hf('leeyunjai/edge-lab', 'main', 'tts') };
+// 8비트 변환본(tools/convert_models.py). WASM·WebGPU 모두에서 동작하고 가벼움 → 있으면 먼저 씀
+const EDGE_LAB_INT8 = { name: 'edge-lab 8비트', base: hf('leeyunjai/edge-lab', 'main', 'tts-int8') };
 const OFFICIAL = {
   name: '공식 아카이브',
   base: hf('supertone-oss-archive/supertonic-3', 'aafc6e32416a594460b32413efc49d7fe4ce6d46'),
@@ -26,7 +28,7 @@ const LOCAL = { name: '자체 호스팅', base: './assets', local: true };
 function modelSources(search = self.location?.search || '') {
   const q = new URLSearchParams(search).get('model');
   const m = q?.match(/^([\w.-]+\/[\w.-]+)(?:@([\w.-]+))?(?:\/([\w./-]+))?$/);
-  const list = [LOCAL, EDGE_LAB, OFFICIAL];
+  const list = [LOCAL, EDGE_LAB_INT8, EDGE_LAB, OFFICIAL];
   // ?model= 로 지정한 위치를 먼저 시도하고, 실패하면 기본 후보로 넘어감
   if (m) list.unshift({ name: q, base: hf(m[1], m[2] || 'main', m[3] || '') });
   return list;
@@ -189,8 +191,37 @@ export class SupertonicTTS {
       ['vec', 'vector_estimator.onnx'],
       ['voc', 'vocoder.onnx'],
     ];
-    // 1) 모델 위치 고르기: 설정·문자표·목소리 파일이 모두 있는 첫 위치
-    let found = false;
+    // 모델 파일을 하나씩 받아(또는 캐시에서 읽어) 바로 세션을 만들고, 버퍼는 곧바로 놓아 줌
+    const create = async (ep) => {
+      const s = {};
+      for (let i = 0; i < names.length; i++) {
+        const [key, file] = names[i];
+        let buf = await fetchCached(`${this.onnxDir}/${file}`, (n, total, cached) => {
+          const mb = (x) => (x / 1048576).toFixed(1);
+          const size = total ? `${mb(n)} / ${mb(total)} MB` : `${mb(n)} MB`;
+          onStatus?.(cached
+            ? `저장된 모델 불러오는 중 (${i + 1}/4)`
+            : `모델 내려받는 중 (${i + 1}/4, ${this.source}) ${size}`);
+        });
+        onStatus?.(`음성 엔진 준비 중 (${i + 1}/4)`);
+        try {
+          s[key] = await ort.InferenceSession.create(new Uint8Array(buf), {
+            executionProviders: [ep],
+            graphOptimizationLevel: 'all',
+          });
+        } catch (e) {
+          // 이미 만든 세션은 풀어 줘서, 다음 방식으로 넘어갈 때 메모리를 비워 둠
+          for (const done of Object.values(s)) { try { await done.release(); } catch (_) { /* ignore */ } }
+          throw e;
+        }
+        buf = null;
+      }
+      return s;
+    };
+    const isNetwork = (e) => /다운로드 실패|Failed to fetch|Load failed|NetworkError/i.test(e?.message || '');
+
+    // 위치 후보를 차례로: 설정·문자표·목소리 파일이 있으면 세션을 만들어 보고(WebGPU → WASM),
+    // 그 위치의 모델이 이 기기에서 안 열리면 다음 후보(예: 8비트 → 32비트)로 넘어감
     const tried = [];
     for (const src of modelSources(search)) {
       for (const onnxDir of [`${src.base}/onnx`, src.base]) {
@@ -210,59 +241,36 @@ export class SupertonicTTS {
           this.onnxDir = onnxDir;
           this.voiceDir = voiceDir;
           this.source = src.name;
-          found = true;
-          break;
         } catch (e) {
           tried.push(`${onnxDir}: ${e.name === 'Error' ? '' : `${e.name} `}${e.message}`);
           if (!src.local) console.warn(`[tts] 모델 위치 건너뜀: ${onnxDir}`, e);
+          continue;
         }
-      }
-      if (found) break;
-    }
-    if (!found) throw new Error(`모델을 찾지 못했어요. ${tried.join(' / ')}`);
-    console.info(`[tts] 모델 위치: ${this.onnxDir} (${this.source})`);
-
-    // 2) 모델 파일을 하나씩 받아(또는 캐시에서 읽어) 바로 세션을 만들고, 버퍼는 곧바로 놓아 줌
-    const create = async (ep) => {
-      const s = {};
-      for (let i = 0; i < names.length; i++) {
-        const [key, file] = names[i];
-        let buf = await fetchCached(`${this.onnxDir}/${file}`, (n, total, cached) => {
-          const mb = (x) => (x / 1048576).toFixed(1);
-          const size = total ? `${mb(n)} / ${mb(total)} MB` : `${mb(n)} MB`;
-          onStatus?.(cached
-            ? `저장된 모델 불러오는 중 (${i + 1}/4)`
-            : `모델 내려받는 중 (${i + 1}/4, ${this.source}) ${size}`);
-        });
-        onStatus?.(`음성 엔진 준비 중 (${i + 1}/4)`);
-        try {
-          s[key] = await ort.InferenceSession.create(new Uint8Array(buf), {
-            executionProviders: [ep],
-            graphOptimizationLevel: 'all',
-          });
-        } catch (e) {
-          // 이미 만든 세션은 풀어 줘서, 다음 방식(WASM)으로 넘어갈 때 메모리를 비워 둠
-          for (const done of Object.values(s)) { try { await done.release(); } catch (_) { /* ignore */ } }
-          throw e;
+        console.info(`[tts] 모델 위치: ${this.onnxDir} (${this.source})`);
+        if (navigator.gpu) {
+          try {
+            this.sessions = await create('webgpu');
+            this.backend = 'WebGPU';
+          } catch (e) {
+            if (isNetwork(e)) throw e;
+            console.warn('WebGPU 실패, WASM으로 전환', e);
+          }
         }
-        buf = null;
+        if (!this.sessions) {
+          try {
+            this.sessions = await create('wasm');
+            this.backend = 'WASM';
+          } catch (e) {
+            if (isNetwork(e)) throw e;
+            tried.push(`${onnxDir}: 이 기기에서 모델을 열지 못함 (${e.message})`);
+            console.warn(`[tts] ${this.source} 모델을 열지 못해 다음 후보로`, e);
+          }
+        }
+        break; // 이 위치는 설정이 있었으니 다른 폴더 구성은 볼 필요 없음
       }
-      return s;
-    };
-
-    if (navigator.gpu) {
-      try {
-        this.sessions = await create('webgpu');
-        this.backend = 'WebGPU';
-      } catch (e) {
-        if (/다운로드 실패|Failed to fetch|Load failed|NetworkError/i.test(e.message)) throw e;
-        console.warn('WebGPU 실패, WASM으로 전환', e);
-      }
+      if (this.sessions) break;
     }
-    if (!this.sessions) {
-      this.sessions = await create('wasm');
-      this.backend = 'WASM';
-    }
+    if (!this.sessions) throw new Error(`모델을 찾지 못했어요. ${tried.join(' / ')}`);
     this.loadSeconds = (performance.now() - t0) / 1000;
     console.info(`[tts] 로딩 ${this.loadSeconds.toFixed(1)}s, backend=${this.backend}, `
       + `threads=${ort.env.wasm.numThreads}, crossOriginIsolated=${self.crossOriginIsolated}`);
