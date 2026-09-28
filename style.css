@@ -300,6 +300,11 @@ button { cursor: pointer; }
   background: #fffdf8; color: #2a2f3d; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
 }
 .cover-btn.ghost-btn { background: transparent; color: #fffdf8; box-shadow: inset 0 0 0 2px rgba(255, 253, 248, 0.85); font-size: 1.1rem; }
+.cover-lang {
+  margin-top: 10px; border: 0; background: transparent; color: #fffdf8; font-size: 0.95rem;
+  text-decoration: underline; text-underline-offset: 3px; opacity: 0.9;
+}
+.lang-btn[aria-pressed="true"] { border-color: var(--ink-soft); color: var(--ink); }
 .cover-engine { margin: 8px 0 0; font-size: 0.85rem; opacity: 0.85; min-height: 1.2em; }
 .cover.opening { animation: cover-fade 0.9s ease forwards; }
 .cover.opening .cover-book { animation: cover-open 0.9s ease-in forwards; }

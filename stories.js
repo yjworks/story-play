@@ -9,5 +9,10 @@ import andersen from './stories/andersen.js';
 import perrault from './stories/perrault.js';
 import world from './stories/world.js';
 import gosa from './stories/gosa.js';
+import enSet1 from './stories/en/set1.js';
+import enSet2 from './stories/en/set2.js';
 
 export const STORIES = [...talmud, ...aesop, ...korean, ...english, ...grimm, ...andersen, ...perrault, ...world, ...gosa];
+
+// 영어 학습용 원고(영문 모드). 키 = 이야기 id. 형식은 stories/en/*.js 참고.
+export const EN = { ...enSet1, ...enSet2 };

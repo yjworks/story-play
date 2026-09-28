@@ -1,5 +1,5 @@
 import { createTTS, VOICES } from './tts-client.js';
-import { STORIES } from './stories.js';
+import { STORIES, EN } from './stories.js';
 
 /* ---------- 진단 기록 (휴대폰에서도 원인을 볼 수 있게) ---------- */
 // [tts]·[player] 로그와 오류를 모아 두었다가, 상단 상태 문구를 누르면 보여 줌
@@ -29,6 +29,9 @@ const REPEAT_KEY = 'story-player:repeat';
 const PLAYLIST_KEY = 'story-player:playlist';
 const FILTER_KEY = 'story-player:filter';
 const LAST_KEY = 'story-player:last'; // 이어 읽기: { id, idx }
+const LANG_KEY = 'story-player:lang'; // 'ko' | 'en' (영문 모드: 영어 학습용 원고가 있는 이야기만)
+// 영문 모드는 영어를 처음 배우는 아이용이라 인물마다 정한 빠르기보다 조금 천천히 읽음
+const EN_SPEED = 0.9;
 // 이야기 표지 색 (모음 순서대로)
 const COVER_COLORS = ['#2f7d6d', '#4f7a2e', '#b5452f', '#3b5ca8', '#7a4a9e', '#b0306a', '#b8741a', '#2b6f8f', '#8a5a2b', '#5a6b2f'];
 const LOOKAHEAD = 4; // 이야기를 고르면 첫 문장 + LOOKAHEAD 문장을 미리 합성. 위치를 옮겨도 이만큼은 버리지 않음
@@ -39,6 +42,7 @@ const GAP_MS = 250; // 문장 사이 쉼
 const THINK_MS = 7000; // 질문 뒤 아이가 생각할 시간
 const NEXT_STORY_MS = 1500; // 반복·이어 듣기에서 다음 이야기 전 쉼
 const DEFAULT_OUTRO = ['이야기 잘 들었나요?', '이야기에서 가장 기억에 남는 장면은 무엇인가요? 왜 그런가요?'];
+const DEFAULT_OUTRO_EN = ['Did you like the story?', 'What part did you like best?'];
 
 // 삽화 배경별 꾸밈 그림과 위치(%)
 const DECO = {
@@ -69,7 +73,8 @@ const tts = await createTTS();
 // 저장 공간이 부족해도 브라우저가 모델 캐시를 지우지 않도록 영구 저장 요청(워커에서는 못 함)
 try { navigator.storage?.persist?.(); } catch (_) { /* unsupported */ }
 let ready = false;
-let stories = [...STORIES, ...loadUserStories()];
+let lang = loadLang();
+let stories = storiesFor(lang);
 let story = null;
 let playlist = loadPlaylist(); // 재생목록: 이야기 id 배열 (같은 이야기를 여러 번 담아도 됨)
 let srcFilter = loadFilter(); // 이야기 목록 모음 태그: 'all' 또는 source 값(탈무드, 이솝우화, 내 이야기 …)
@@ -88,6 +93,24 @@ let source = null;
 // key → { p: Promise<Float32Array>, started: boolean }
 const audioCache = new Map();
 
+/* ---------- 언어 (한국어 / 영문 학습 모드) ---------- */
+function loadLang() {
+  if (!Object.keys(EN).length) return 'ko';
+  try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ko'; } catch (_) { return 'ko'; }
+}
+// 영문 모드: 영어 원고(stories/en/*.js)가 있는 이야기만, 제목·대사·질문을 영어로 바꿔 씀.
+// 인물(cast)은 한국어 이야기와 같은 객체를 써서 목소리 바꾸기가 두 모드에 함께 반영됨.
+function storiesFor(l) {
+  if (l !== 'en') return [...STORIES, ...loadUserStories()];
+  return STORIES.filter((s) => EN[s.id]).map((s) => ({ ...s, ...EN[s.id], cast: s.cast, lang: 'en', koTitle: s.title }));
+}
+// 재생목록·이어 읽기는 모드마다 따로 저장
+const keyOf = (k) => (lang === 'en' ? `${k}:en` : k);
+const isEn = () => lang === 'en';
+function nameOf(who) {
+  return story?.names?.[who] || who;
+}
+
 /* ---------- 저장 ---------- */
 function loadUserStories() {
   try { return JSON.parse(localStorage.getItem(USER_KEY) || '[]'); } catch (_) { return []; }
@@ -98,11 +121,11 @@ function saveUserStories() {
 function loadPlaylist() {
   try {
     const ids = new Set(stories.map((s) => s.id));
-    return JSON.parse(localStorage.getItem(PLAYLIST_KEY) || '[]').filter((id) => ids.has(id));
+    return JSON.parse(localStorage.getItem(keyOf(PLAYLIST_KEY)) || '[]').filter((id) => ids.has(id));
   } catch (_) { return []; }
 }
 function savePlaylist() {
-  try { localStorage.setItem(PLAYLIST_KEY, JSON.stringify(playlist)); } catch (_) { /* ignore */ }
+  try { localStorage.setItem(keyOf(PLAYLIST_KEY), JSON.stringify(playlist)); } catch (_) { /* ignore */ }
 }
 try {
   const saved = localStorage.getItem(REPEAT_KEY);
@@ -131,15 +154,16 @@ function buildSeq() {
   // 맨 앞은 제목(표지에서 해설이 읽음), 이어서 본문, 끝에 마무리 질문
   const title = { who: NARRATOR, text: story.title, ask: false, q: false, title: true };
   const body = story.lines.map(([who, text]) => ({ who, text, ask: false, q: false }));
-  const outro = (story.outro?.length ? story.outro : DEFAULT_OUTRO)
+  const outro = (story.outro?.length ? story.outro : isEn() ? DEFAULT_OUTRO_EN : DEFAULT_OUTRO)
     .map((text, k) => ({ who: NARRATOR, text, ask: true, q: k > 0 }));
   return [title, ...body, ...outro];
 }
 function keyFor(i) {
   const { who, text } = seq[i];
   const c = castOf(who);
-  return `${story.id}|${i}|${c.voice}|${c.speed}|${el.steps.value}|${text}`;
+  return `${storyKey()}|${i}|${c.voice}|${c.speed}|${el.steps.value}|${text}`;
 }
+const storyKey = () => `${story.id}:${story.lang || 'ko'}`;
 
 /* ---------- 합성 캐시 ---------- */
 // 목소리·품질·이야기·위치가 바뀌면 필요 없어진 합성을 버려서(합성 중인 것도 중간에 멈춤), 바뀐 설정이 곧바로 반영되게 함.
@@ -151,8 +175,12 @@ function cancelPending(from = -1) {
   for (const [k, e] of audioCache) {
     if (!e.done && !keep.has(k)) { e.ctl.abort(); audioCache.delete(k); }
     // 다른 이야기의 다 만든 소리는 지움(이야기 한 편이 수십 MB라 쌓이면 휴대폰 메모리가 모자람)
-    else if (e.done && story && !k.startsWith(`${story.id}|`)) audioCache.delete(k);
+    else if (e.done && story && !k.startsWith(`${storyKey()}|`)) audioCache.delete(k);
   }
+}
+// 이야기 언어와 빠르기(영문 모드는 조금 천천히)
+function speechOf(c) {
+  return story.lang === 'en' ? { lang: 'en', speed: c.speed * EN_SPEED } : { lang: 'ko', speed: c.speed };
 }
 function audioFor(i) {
   const k = keyFor(i);
@@ -163,7 +191,7 @@ function audioFor(i) {
     node?.classList.add('busy');
     const entry = { started: false, ctl: new AbortController() };
     entry.p = tts.synth(text, {
-      voice: c.voice, speed: c.speed, steps: Number(el.steps.value), lang: 'ko',
+      voice: c.voice, steps: Number(el.steps.value), ...speechOf(c),
       signal: entry.ctl.signal, onStart: () => { entry.started = true; },
     }).finally(() => node?.classList.remove('busy'));
     entry.p.then(() => { entry.done = true; }, () => {});
@@ -392,7 +420,7 @@ function renderStoryList() {
     const pic = document.createElement('span'); pic.className = 's-pic'; pic.setAttribute('aria-hidden', 'true');
     pic.textContent = s.emoji || '📖';
     const t = document.createElement('span'); t.className = 's-title'; t.textContent = s.title;
-    const src = document.createElement('span'); src.className = 's-src'; src.textContent = s.source;
+    const src = document.createElement('span'); src.className = 's-src'; src.textContent = s.koTitle ? `${s.source} · ${s.koTitle}` : s.source;
     b.append(pic, t, src);
     b.onclick = () => { selectStory(s.id); closeShelf(); };
     const add = document.createElement('button');
@@ -443,7 +471,7 @@ function renderLegend() {
   el.legend.replaceChildren(...characters().map((name) => {
     const s = document.createElement('span');
     s.style.setProperty('--c', colorOf(name));
-    s.textContent = name;
+    s.textContent = nameOf(name);
     return s;
   }));
 }
@@ -452,9 +480,9 @@ function renderCast() {
     const chip = document.createElement('div');
     chip.className = 'chip';
     chip.style.setProperty('--c', colorOf(name) || 'var(--ink-soft)');
-    const n = document.createElement('strong'); n.textContent = name;
+    const n = document.createElement('strong'); n.textContent = nameOf(name);
     const sel = document.createElement('select');
-    sel.setAttribute('aria-label', `${name} 목소리`);
+    sel.setAttribute('aria-label', `${nameOf(name)} 목소리`);
     for (const v of VOICES) {
       const o = document.createElement('option'); o.value = v; o.textContent = VOICE_LABEL[v];
       if (v === c.voice) o.selected = true;
@@ -474,9 +502,9 @@ function renderCast() {
       pause();
       ensureCtx();
       const line = story.lines.find(([w]) => w === name);
-      const text = line ? line[1] : `안녕, 나는 ${name}이야.`;
+      const text = line ? line[1] : isEn() ? `Hello, I am ${nameOf(name)}.` : `안녕, 나는 ${name}이야.`;
       hear.disabled = true;
-      try { await playPCM(await tts.synth(text, { voice: c.voice, speed: c.speed, steps: Number(el.steps.value) })); }
+      try { await playPCM(await tts.synth(text, { voice: c.voice, steps: Number(el.steps.value), ...speechOf(c) })); }
       catch (e) { console.error(e); el.engine.textContent = `음성을 만들지 못했어요: ${e.message}`; }
       finally { hear.disabled = false; }
     };
@@ -509,7 +537,7 @@ function renderBook() {
         askBox = document.createElement('section');
         askBox.className = 'ask';
         const h = document.createElement('h3');
-        h.textContent = '생각해 볼까요?';
+        h.textContent = isEn() ? 'Let’s think!' : '생각해 볼까요?';
         askBox.append(h);
         units.push({ node: askBox, first: i, ask: true });
       }
@@ -530,7 +558,7 @@ function renderBook() {
     const color = colorOf(who);
     if (color) {
       s.style.setProperty('--c', color);
-      s.title = who;
+      s.title = nameOf(who);
     }
     s.textContent = talk ? `“${shown(text)}”` : shown(text);
     para.append(s);
@@ -730,7 +758,7 @@ function selectStory(id, pos = -1, { anim = true } = {}) {
   seq = buildSeq();
   idx = 0;
   el.storyTitle.textContent = story.title;
-  el.storySource.textContent = story.source;
+  el.storySource.textContent = story.koTitle ? `${story.source} · ${story.koTitle}` : story.source;
   el.page.style.setProperty('--cv', COVER_COLORS[Math.max(0, sources().indexOf(story.source)) % COVER_COLORS.length]);
   renderFilter();
   renderStoryList();
@@ -748,11 +776,11 @@ function selectStory(id, pos = -1, { anim = true } = {}) {
 }
 function saveLast() {
   if (!story) return;
-  try { localStorage.setItem(LAST_KEY, JSON.stringify({ id: story.id, idx })); } catch (_) { /* ignore */ }
+  try { localStorage.setItem(keyOf(LAST_KEY), JSON.stringify({ id: story.id, idx })); } catch (_) { /* ignore */ }
 }
 function loadLast() {
   try {
-    const v = JSON.parse(localStorage.getItem(LAST_KEY) || 'null');
+    const v = JSON.parse(localStorage.getItem(keyOf(LAST_KEY)) || 'null');
     return v && stories.some((s) => s.id === v.id) ? v : null;
   } catch (_) { return null; }
 }
@@ -811,7 +839,9 @@ document.addEventListener('keydown', (e) => {
 // 들어올 때와 "이야기 극장"을 누를 때 보여 줌. 표지의 버튼을 누르는 순간 오디오도 깨워 둠(브라우저 자동 재생 정책).
 const cover = $('cover');
 function renderCover() {
-  $('coverSub').textContent = `옛이야기 ${stories.length}편을 인물마다 다른 목소리로 들려줘요`;
+  $('coverSub').textContent = isEn()
+    ? `영어로 듣는 옛이야기 ${stories.length}편 · 영어 학습용`
+    : `옛이야기 ${stories.length}편을 인물마다 다른 목소리로 들려줘요`;
   $('coverToc').replaceChildren(...sources().map((src) => {
     const b = document.createElement('button');
     b.append(src, Object.assign(document.createElement('span'), { textContent: stories.filter((s) => s.source === src).length }));
@@ -856,6 +886,33 @@ $('coverOpen').onclick = () => {
   try { localStorage.setItem(FILTER_KEY, 'all'); } catch (_) { /* ignore */ }
   openBook(stories[0].id, 0);
 };
+// 한국어 ↔ 영문(학습용) 모드 바꾸기: 상단과 표지의 버튼
+function renderLang() {
+  document.documentElement.lang = lang;
+  $('langBtn').textContent = isEn() ? '가 한국어' : 'A English';
+  $('langBtn').setAttribute('aria-pressed', String(isEn()));
+  $('coverLang').textContent = isEn() ? '가 한국어로 듣기' : 'A 영어로 듣기 (학습용)';
+  el.openEditor.hidden = isEn(); // 내 이야기는 한국어 모드에서만
+  const hasEn = Object.keys(EN).length > 0; // 영어 원고가 없으면 버튼을 숨김
+  $('langBtn').hidden = !hasEn;
+  $('coverLang').hidden = !hasEn;
+}
+function setLang(l) {
+  if (l === lang) return;
+  pause();
+  lang = l;
+  try { localStorage.setItem(LANG_KEY, l); } catch (_) { /* ignore */ }
+  stories = storiesFor(l);
+  playlist = loadPlaylist();
+  plPos = -1;
+  renderLang();
+  story = null;
+  selectStory((loadLast() || { id: stories[0].id }).id, -1, { anim: false });
+  renderCover();
+}
+$('langBtn').onclick = () => setLang(isEn() ? 'ko' : 'en');
+$('coverLang').onclick = () => setLang(isEn() ? 'ko' : 'en');
+renderLang();
 $('homeTitle').onclick = showCover;
 $('homeTitle').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showCover(); } };
 // 엔진 상태를 표지에도 보여 줌

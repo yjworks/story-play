@@ -391,7 +391,7 @@ export class SupertonicTTS {
       parts.forEach((p, i) => { out.set(p, off); off += p.length + (i < parts.length - 1 ? silence : 0); });
       const sec = (performance.now() - t0) / 1000;
       const audio = out.length / this.sampleRate;
-      console.info(`[tts] ${this.backend} steps=${steps} voice=${voice} 합성 ${sec.toFixed(2)}s / 음성 ${audio.toFixed(2)}s `
+      console.info(`[tts] ${this.backend} ${lang} steps=${steps} voice=${voice} 합성 ${sec.toFixed(2)}s / 음성 ${audio.toFixed(2)}s `
         + `(RTF ${(sec / Math.max(audio, 0.01)).toFixed(2)}) "${text.slice(0, 20)}"`);
       return out;
     });
