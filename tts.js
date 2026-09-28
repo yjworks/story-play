@@ -17,7 +17,9 @@ ort.env.wasm.numThreads = self.crossOriginIsolated
 const hf = (repo, rev, path = '') => `https://huggingface.co/${repo}/resolve/${rev}${path ? `/${path}` : ''}`;
 const EDGE_LAB = { name: 'edge-lab', base: hf('leeyunjai/edge-lab', 'main', 'tts') };
 // 8비트 변환본(tools/convert_models.py). WASM·WebGPU 모두에서 동작하고 가벼움 → 있으면 먼저 씀
-const EDGE_LAB_INT8 = { name: 'edge-lab 8비트', base: hf('leeyunjai/edge-lab', 'main', 'tts-int8') };
+// INT8_REV: 8비트 파일을 다시 올리면 그 커밋의 전체 해시로 바꿀 것 → 주소가 바뀌어 모든 기기가 새 파일을 받고 예전 파일은 정리됨
+const INT8_REV = 'main';
+const EDGE_LAB_INT8 = { name: 'edge-lab 8비트', base: hf('leeyunjai/edge-lab', INT8_REV, 'tts-int8') };
 const OFFICIAL = {
   name: '공식 아카이브',
   base: hf('supertone-oss-archive/supertonic-3', 'aafc6e32416a594460b32413efc49d7fe4ce6d46'),
@@ -272,11 +274,12 @@ export class SupertonicTTS {
     }
     if (!this.sessions) throw new Error(`모델을 찾지 못했어요. ${tried.join(' / ')}`);
 
-    // 지금 쓰는 모델이 아닌 예전 모델 파일(예: 8비트로 바꾸기 전의 32비트)은 기기 저장소에서 지움
+    // 지금 쓰는 4개 파일이 아닌 예전 모델 파일(32비트, 다른 리비전 등)은 기기 저장소에서 지움
     try {
       const cache = await openCache();
+      const inUse = new Set(names.map(([, file]) => `${this.onnxDir}/${file}`));
       for (const req of (await cache?.keys()) || []) {
-        if (req.url.endsWith('.onnx') && !req.url.startsWith(`${this.onnxDir}/`)) {
+        if (req.url.endsWith('.onnx') && !inUse.has(req.url)) {
           await cache.delete(req);
           console.info(`[tts] 쓰지 않는 예전 모델 파일 정리: ${req.url.split('/').slice(-3).join('/')}`);
         }
