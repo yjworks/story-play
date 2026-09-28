@@ -11,9 +11,10 @@ python3 -m http.server 8000   # 이 폴더에서
 ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. GitHub Pages에는 파일을 그대로 올리면 됩니다.
 
 ## 배포 (GitHub Pages)
-- `main`에 push하면 `.github/workflows/pages.yml`이 정적 파일(`index.html`, `style.css`, `*.js`, 있으면 `assets/`)을 그대로 배포합니다.
-- 최초 1회: 리포 **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로 지정해야 합니다.
+- 리포 Settings → Pages의 Source가 **Deploy from a branch: `main` / (root)**입니다. `main`에 push하면 자동으로 배포됩니다.
+- 빌드 없이 파일을 그대로 올리도록 `.nojekyll`을 두었습니다.
 - 주소: https://yjworks.github.io/story-play/
+- `assets/`에 모델을 자체 호스팅하면 함께 배포됩니다. 파일당 100MB 제한이 있습니다.
 - GitHub Pages는 COOP/COEP 헤더를 줄 수 없어 `crossOriginIsolated`가 false입니다. 그래서 WASM으로 넘어가면 스레드 1개로 동작합니다. WebGPU 경로는 영향이 없습니다.
 
 ## 모델
