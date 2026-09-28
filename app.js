@@ -1,5 +1,21 @@
-import { SupertonicTTS, VOICES } from './tts.js';
+import { createTTS, VOICES } from './tts-client.js';
 import { STORIES } from './stories.js';
+
+/* ---------- 진단 기록 (휴대폰에서도 원인을 볼 수 있게) ---------- */
+// [tts]·[player] 로그와 오류를 모아 두었다가, 상단 상태 문구를 누르면 보여 줌
+const diag = [];
+const t0 = performance.now();
+function note(kind, args) {
+  const text = args.map((x) => (x instanceof Error ? `${x.name}: ${x.message}` : typeof x === 'string' ? x : JSON.stringify(x))).join(' ');
+  diag.push(`${((performance.now() - t0) / 1000).toFixed(1)}s ${kind} ${text}`.slice(0, 400));
+  if (diag.length > 60) diag.shift();
+}
+for (const k of ['info', 'warn', 'error']) {
+  const orig = console[k].bind(console);
+  console[k] = (...args) => { note(k === 'info' ? '·' : k === 'warn' ? '!' : '✕', args); orig(...args); };
+}
+window.addEventListener('error', (e) => note('✕', [e.error || e.message]));
+window.addEventListener('unhandledrejection', (e) => note('✕', [e.reason]));
 
 // 인물별 글씨 색 (해설은 기본 글씨 색). 밝은 종이 위에서 읽히는 진한 색 위주.
 const COLORS = ['#c0392b', '#2e6fd8', '#8e44ad', '#1e8a5a', '#d2691e', '#b0306a', '#0f7f8f', '#7a6a12'];
@@ -46,7 +62,10 @@ const el = {
   editor: $('editor'), openEditor: $('openEditor'), edTitle: $('edTitle'), edBody: $('edBody'),
 };
 
-const tts = new SupertonicTTS();
+// 음성 엔진은 가능하면 별도 스레드(워커)에서 돌림 → 합성 중에도 화면이 멈추지 않음
+const tts = await createTTS();
+// 저장 공간이 부족해도 브라우저가 모델 캐시를 지우지 않도록 영구 저장 요청(워커에서는 못 함)
+try { navigator.storage?.persist?.(); } catch (_) { /* unsupported */ }
 let ready = false;
 let stories = [...STORIES, ...loadUserStories()];
 let story = null;
@@ -830,11 +849,26 @@ new MutationObserver(() => { $('coverEngine').textContent = el.engine.textConten
 /* ---------- 시작 ---------- */
 selectStory((loadLast() || { id: stories[0].id }).id, -1, { anim: false });
 showCover();
-tts.load((msg) => { el.engine.textContent = msg; })
+// 상태 문구: 받는 중 진행률은 조각마다 오므로 0.25초에 한 번만 화면에 반영(버벅임 방지)
+let statusTimer = 0;
+let statusMsg = '';
+let lastStep = '';
+function setStatus(msg) {
+  statusMsg = msg;
+  const step = msg.replace(/[\d.]+ ?\/? ?[\d.]* ?MB/g, '').trim();
+  if (step !== lastStep) { lastStep = step; note('▶', [step]); }
+  if (statusTimer) return;
+  statusTimer = setTimeout(() => { statusTimer = 0; el.engine.textContent = statusMsg; }, 250);
+}
+tts.load(setStatus)
   .then(async () => {
     await tts.style(castOf(seq[0].who).voice);
     ready = true;
+    clearTimeout(statusTimer); statusTimer = 0;
     el.engine.textContent = `준비 완료 (${tts.backend} · ${tts.source})`;
+    note('▶', [`${el.engine.textContent}${tts.inWorker ? ' · 워커' : ' · 화면 스레드'}`]);
+    // WebGPU가 없어 CPU(WASM)로 도는 기기는 합성이 느리므로 품질 기본값을 '빠르게'로
+    if (tts.backend === 'WASM') el.steps.value = '5';
     renderCast();
     renderPlaylist();
     renderPlayState();
@@ -843,14 +877,18 @@ tts.load((msg) => { el.engine.textContent = msg; })
   })
   .catch((e) => {
     console.error(e);
+    clearTimeout(statusTimer); statusTimer = 0;
     el.engine.textContent = /모델을 찾지 못했어요/.test(e.message)
       ? '음성 엔진을 불러오지 못했어요 (모델 파일을 받지 못함)'
       : `음성 엔진을 불러오지 못했어요: ${e.message}`;
     el.engine.title = e.message;
-    el.engine.dataset.detail = `${e.name}: ${e.message}\n\nWebGPU: ${'gpu' in navigator ? '있음' : '없음'} · ${navigator.userAgent}`;
     el.engine.classList.add('has-detail');
   });
 // 오류 문구를 누르면 자세한 원인을 보여 줌(휴대폰에서는 툴팁·콘솔을 볼 수 없으므로)
-const showEngineDetail = () => { if (el.engine.dataset.detail) alert(el.engine.dataset.detail); };
+// 로딩 중이든 실패 후든 누르면: 지금 상태 + 단계별 기록 + 기기 정보
+const showEngineDetail = () => {
+  const mem = navigator.deviceMemory ? ` · 메모리 ${navigator.deviceMemory}GB` : '';
+  alert(`${el.engine.textContent}\n\n${diag.slice(-25).join('\n')}\n\nWebGPU: ${'gpu' in navigator ? '있음' : '없음'}${mem}\n${navigator.userAgent}`);
+};
 el.engine.addEventListener('click', showEngineDetail);
 $('coverEngine').addEventListener('click', showEngineDetail);

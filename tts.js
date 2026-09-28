@@ -22,8 +22,9 @@ const OFFICIAL = {
 };
 const LOCAL = { name: '자체 호스팅', base: './assets', local: true };
 
-function modelSources() {
-  const q = new URLSearchParams(location.search).get('model');
+// search: 페이지 주소의 ?… 부분. 워커 안에서는 location 이 워커 파일 주소라서 페이지에서 넘겨받음.
+function modelSources(search = self.location?.search || '') {
+  const q = new URLSearchParams(search).get('model');
   const m = q?.match(/^([\w.-]+\/[\w.-]+)(?:@([\w.-]+))?(?:\/([\w./-]+))?$/);
   const list = [LOCAL, EDGE_LAB, OFFICIAL];
   // ?model= 로 지정한 위치를 먼저 시도하고, 실패하면 기본 후보로 넘어감
@@ -178,7 +179,7 @@ export class SupertonicTTS {
 
   get sampleRate() { return this.cfgs.ae.sample_rate; }
 
-  async load(onStatus) {
+  async load(onStatus, { search } = {}) {
     const t0 = performance.now();
     // 저장 공간 부족 시 브라우저가 모델 캐시를 지우지 않도록 영구 저장 요청
     try { await navigator.storage?.persist?.(); } catch (_) { /* unsupported */ }
@@ -191,7 +192,7 @@ export class SupertonicTTS {
     // 1) 모델 위치 고르기: 설정·문자표·목소리 파일이 모두 있는 첫 위치
     let found = false;
     const tried = [];
-    for (const src of modelSources()) {
+    for (const src of modelSources(search)) {
       for (const onnxDir of [`${src.base}/onnx`, src.base]) {
         try {
           if (src.local) {
