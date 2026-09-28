@@ -28,6 +28,7 @@
     <button id="openShelf" class="shelf-btn" aria-controls="shelf" aria-expanded="false">📚 이야기 목록</button>
     <h1>이야기 극장</h1>
     <p id="engine" class="engine" aria-live="polite">음성 엔진 불러오는 중</p>
+    <button id="aboutBtn" class="ai-badge" aria-haspopup="dialog" title="AI 목소리 안내">🤖 AI 목소리</button>
   </header>
 
   <div class="layout">
@@ -116,6 +117,24 @@
       <div class="editor-actions">
         <button value="cancel" class="ghost" formnovalidate>닫기</button>
         <button id="edSave" value="save" class="solid">추가하기</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="about" class="editor about">
+    <form method="dialog" class="editor-form">
+      <h2>🤖 AI 목소리 안내</h2>
+      <p class="about-kid">이 이야기의 목소리는 사람이 녹음한 게 아니라, 인공지능(AI)이 이 기기 안에서 만든 소리예요.</p>
+      <h3>보호자 안내</h3>
+      <ul class="about-list">
+        <li>음성 합성 모델: Supertonic 3 (Supertone Inc.), BigScience Open RAIL-M 라이선스. 모델 파일은 수정하지 않고 사용합니다. <a href="licenses/OpenRAIL-M.txt" target="_blank" rel="noopener">라이선스 원문</a></li>
+        <li>모델 라이선스에 따라, 이 앱과 모델을 불법 행위, 미성년자에게 해를 끼치는 일, 동의 없는 사칭(딥페이크), 기계가 만든 것임을 숨긴 콘텐츠 배포, 의료 조언 등 라이선스 Attachment A가 금지하는 용도로 쓸 수 없습니다.</li>
+        <li>이 앱은 Supertone Inc.와 제휴하거나 보증받은 것이 아닙니다. 원 저작권자는 2026년 청산되었고 모델은 "있는 그대로" 제공됩니다.</li>
+        <li>재생목록과 설정은 이 기기에만 저장되며, 개인정보를 서버로 보내지 않습니다.</li>
+        <li>그 밖의 구성 요소: 예제 코드 <a href="licenses/Supertonic-code-MIT.txt" target="_blank" rel="noopener">Supertonic (MIT)</a>, <a href="licenses/onnxruntime-MIT.txt" target="_blank" rel="noopener">ONNX Runtime Web (MIT)</a>, 글꼴 Jua·Noto Sans KR (SIL OFL 1.1). 이야기 문장은 모두 자체 각색입니다.</li>
+      </ul>
+      <div class="editor-actions">
+        <button value="close" class="solid">닫기</button>
       </div>
     </form>
   </dialog>

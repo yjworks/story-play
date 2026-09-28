@@ -38,7 +38,8 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 - 주소 뒤에 `?model=계정/저장소[@리비전][/폴더]`를 붙이면 그 위치를 가장 먼저 시도하고, 실패하면 위 기본 순서로 넘어갑니다. 예: `?model=leeyunjai/edge-lab@main/tts`
 - 받은 파일은 Cache Storage(`supertonic3-aafc6e3`)에 URL 단위로 저장합니다. edge-lab은 `main`을 따라가므로, 저장소 파일을 바꾸면 `tts.js`의 `CACHE_NAME`을 바꿔야 새 파일을 받습니다. 고정하려면 `EDGE_LAB`의 `'main'`을 전체 커밋 해시로 바꾸세요.
 - 런타임: onnxruntime-web 1.22.0 고정. `dist/ort.webgpu.min.mjs`와 WASM 파일이 npm 1.22.0 패키지에 있는 것은 확인했습니다.
-- 라이선스: Supertonic 모델은 OpenRAIL-M, 샘플 코드는 MIT입니다. edge-lab 저장소에는 AGPL-3.0 태그가 붙어 있어, 모델 파일의 라이선스 표기가 원본(OpenRAIL-M)과 맞는지 확인이 필요합니다.
+- 라이선스: 모델은 BigScience Open RAIL-M(원문 `licenses/OpenRAIL-M.txt`), 예제 코드는 MIT입니다. 제3자 고지는 `THIRD_PARTY_NOTICES.md`, 사용 제한을 담은 이용약관 초안은 `TERMS_DRAFT.md`에 있습니다.
+- edge-lab 저장소에는 AGPL-3.0 태그가 붙어 있습니다. 모델 파일은 원래 Open RAIL-M이라 AGPL로 바꿀 수 없으므로, 태그를 고치고 `tts/` 폴더에 Open RAIL-M 원문을 함께 두는 것을 권장합니다(라이선스 4b: 받는 사람에게 사본 제공).
 - GitHub Pages는 파일당 100MB 제한이 있습니다. 자체 호스팅(`assets/`)을 쓸 때만 해당합니다.
 
 ## 파일
@@ -48,6 +49,7 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 | `stories.js` | 이야기 25편. 등장인물 → 목소리(F1~F5, M1~M5)·속도, 목록 아이콘, 삽화(`scene`), 마무리 질문(`outro`) |
 | `app.js` | 플레이어. 이야기를 고르면 첫 3줄을 미리 합성하고, 재생 중에는 다음 2줄을 미리 합성합니다. 목소리나 품질을 바꾸면 시작 전인 미리 합성은 버립니다. 대사 사이에 끊기면 `[player] … 대기`를 출력합니다 |
 | `index.html`, `style.css` | 화면. 한국어 줄바꿈은 `word-break: keep-all`로 어절 단위로 끊습니다 |
+| `licenses/`, `THIRD_PARTY_NOTICES.md`, `TERMS_DRAFT.md` | 라이선스 원문(Open RAIL-M, MIT 2종), 제3자 고지, 이용약관 초안. 화면 오른쪽 위 "🤖 AI 목소리"를 누르면 AI 음성 고지와 라이선스 링크가 나옴 |
 | `icons/`, `manifest.webmanifest` | 파비콘(SVG, 32px), 홈 화면 아이콘(180/192/512px, 마스크형 512px), 앱 매니페스트. Chrome "홈 화면에 추가" 시 앱처럼 전체 화면으로 열림. 원본은 `icons/icon.svg`, `icons/maskable.svg` |
 
 화면의 "내 이야기 넣기"에서 `이름: 대사` 형식으로 붙여 넣으면 목소리를 자동으로 배정하고 localStorage에 저장합니다.
@@ -80,7 +82,7 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 | 3 | 모델 용량과 첫 로딩 시간 | 미확인 | 로딩 문구의 MB 표시, 콘솔 `[tts] 로딩 N s` |
 | 4 | 한국어 표현 태그 효과 | 미확인 | 「토끼와 거북이」 15번째 줄(`<breath>`), 「여우와 두루미」 13번째 줄(`<laugh>`)을 들어 봅니다. 글자로 읽으면 `stories.js`에서 태그를 지웁니다 |
 | 5 | 나머지 태그 7종 이름 | 미확인 | 공식 README에는 `laugh`, `breath`, `sigh`만 나옵니다 |
-| 6 | OpenRAIL-M 사용 제한과 교육 사업 배포 | 미확인 | HF 모델 페이지의 LICENSE 원문을 법무 검토해야 합니다 |
+| 6 | OpenRAIL-M과 교육 사업 배포 | **확인함 (2026-09-28)** | 원문은 BigScience Open RAIL-M 표준. 상업적 이용 가능(영구·무상·취소 불가). 의무: 이용약관에 Attachment A 사용 제한 포함, 라이선스 사본 제공, 기계 생성 음성 고지, Supertone 상표·제휴 암시 금지. 앱에 "🤖 AI 목소리" 안내 창과 라이선스 파일을 넣었고, 약관은 `TERMS_DRAFT.md` 초안(법무 검토 필요). 원 저작권자 Supertone Inc.는 2026-07 청산 결의, 2026-09-09 저장소 아카이브 |
 
 ### Tab S8 측정 기록 (채워 넣을 것)
 | 항목 | 값 |

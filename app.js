@@ -555,6 +555,7 @@ function closeShelf() {
   el.openShelf.setAttribute('aria-expanded', 'false');
 }
 el.openShelf.onclick = openShelf;
+$('aboutBtn').onclick = () => $('about').showModal();
 el.closeShelf.onclick = closeShelf;
 el.backdrop.onclick = closeShelf;
 
