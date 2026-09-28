@@ -30,7 +30,9 @@ const PLAYLIST_KEY = 'story-player:playlist';
 const FILTER_KEY = 'story-player:filter';
 const LAST_KEY = 'story-player:last'; // 이어 읽기: { id, idx }
 const LANG_KEY = 'story-player:lang'; // 'ko' | 'en' (영문 모드: 영어 학습용 원고가 있는 이야기만)
-// 영문 모드는 영어를 처음 배우는 아이용이라 인물마다 정한 빠르기보다 조금 천천히 읽음
+// 전체 빠르기: 인물마다 정한 빠르기에 곱함(아이가 따라오기 쉽게 조금 천천히)
+const BASE_SPEED = 0.93;
+// 영문 모드는 영어를 처음 배우는 아이용이라 한 번 더 천천히
 const EN_SPEED = 0.9;
 // 이야기 표지 색 (모음 순서대로)
 const COVER_COLORS = ['#2f7d6d', '#4f7a2e', '#b5452f', '#3b5ca8', '#7a4a9e', '#b0306a', '#b8741a', '#2b6f8f', '#8a5a2b', '#5a6b2f'];
@@ -38,11 +40,62 @@ const LOOKAHEAD = 4; // 이야기를 고르면 첫 문장 + LOOKAHEAD 문장을 
 // 재생 중에는 이야기 끝까지 차례로 미리 합성함(합성이 음성보다 빠르므로 여유분이 계속 쌓임).
 // 화면을 끄면 휴대폰이 계산을 거의 멈추는데(S24+ 확인), 그때까지 쌓아 둔 문장은 끝까지 들려줄 수 있음.
 const NARRATION_PER_PARA = 3; // 해설 문장을 한 문단에 몇 개까지 이어 붙일지
-const GAP_MS = 250; // 문장 사이 쉼
+const GAP_MS = 500; // 문장 사이 쉼
 const THINK_MS = 7000; // 질문 뒤 아이가 생각할 시간
 const NEXT_STORY_MS = 1500; // 반복·이어 듣기에서 다음 이야기 전 쉼
 const DEFAULT_OUTRO = ['이야기 잘 들었나요?', '이야기에서 가장 기억에 남는 장면은 무엇인가요? 왜 그런가요?'];
 const DEFAULT_OUTRO_EN = ['Did you like the story?', 'What part did you like best?'];
+
+// 화면 글자. 영문 모드에서는 모두 영어로(index.html 의 data-i18n* 속성 + 아래 t()).
+const UI = {
+  ko: {
+    shelf: '📚 이야기 목록', app: '이야기 극장', toCover: '처음 표지로', ai: '🤖 AI 목소리', aiTitle: 'AI 목소리 안내',
+    langBtn: 'A English', langTitle: '영어(학습용)로 바꾸기', coverLang: 'A 영어로 듣기 (학습용)',
+    open: '📖 책 펼치기', close: '닫기', playlist: '재생목록', plPlay: '▶ 목록 재생', plClear: '비우기',
+    plEmpty: '이야기 옆 ＋를 누르면 여기에 담겨요.', plAddShown: '아래 목록 모두 담기', choose: '이야기 고르기',
+    voices: '목소리 바꾸기', pgPrev: '◀ 앞 쪽', pgNext: '다음 쪽 ▶', repeat: '반복', rOff: '반복 안 함', rOne: '한 편 반복',
+    rList: '목록 반복', quality: '목소리 품질', qFast: '빠르게', qMid: '보통', qGood: '좋게',
+    prevLine: '이전 문장', nextLine: '다음 문장', play: '재생', pause: '일시정지', all: '전체', count: (n) => `${n}편`,
+    up: '위로', down: '아래로', remove: '빼기', addOnce: '재생목록에 담기', addAgain: '재생목록에 한 번 더 담기',
+    clearAsk: '재생목록을 비울까요?', slow: '목소리를 만드는 중이에요…', again: '처음부터 다시 들려줄게요.',
+    nextStory: '다음 이야기로 넘어갈게요.', end: '끝! 다시 들으려면 재생을 눌러 주세요.', pic: '그림', voiceOf: '목소리',
+    hear: '들어보기', think: '생각해 볼까요?', cover: '표지', page: (a, b) => `${a} / ${b} 쪽`,
+    tapHint: '재생을 누르거나, 듣고 싶은 문장을 눌러 주세요.', readFirst: '목소리를 준비하는 동안 먼저 읽어 보세요.',
+    coverSub: (n) => `옛이야기 ${n}편을 인물마다 다른 목소리로 들려줘요`, resume: (t) => `▶ 이어 읽기 · ${t}`,
+    ready: (b, s) => `준비 완료 (${b} · ${s})`, synthFail: (m) => `음성을 만들지 못했어요: ${m}`,
+    loadFail: '음성 엔진을 불러오지 못했어요 (모델 파일을 받지 못함)', loadFailMsg: (m) => `음성 엔진을 불러오지 못했어요: ${m}`,
+    cast: '등장인물', pages: '쪽 넘기기', controls: '재생 조작', loading: '음성 엔진 불러오는 중',
+    repeatTitle: '반복 안 함: 재생목록을 끝까지 한 번 · 한 편 반복: 지금 이야기만 계속 · 목록 반복: 재생목록을 처음부터 다시',
+  },
+  en: {
+    shelf: '📚 Stories', app: 'Story Theater', toCover: 'Back to the cover', ai: '🤖 AI Voice', aiTitle: 'About the AI voice',
+    langBtn: '가 한국어', langTitle: 'Switch to Korean', coverLang: '가 한국어로 듣기',
+    open: '📖 Open the Book', close: 'Close', playlist: 'Playlist', plPlay: '▶ Play list', plClear: 'Clear',
+    plEmpty: 'Tap ＋ next to a story to add it here.', plAddShown: 'Add all stories below', choose: 'Choose a story',
+    voices: 'Change voices', pgPrev: '◀ Back', pgNext: 'Next ▶', repeat: 'Repeat', rOff: 'No repeat', rOne: 'Repeat one',
+    rList: 'Repeat list', quality: 'Voice quality', qFast: 'Fast', qMid: 'Normal', qGood: 'Best',
+    prevLine: 'Previous sentence', nextLine: 'Next sentence', play: 'Play', pause: 'Pause', all: 'All',
+    count: (n) => `${n}`, up: 'up', down: 'down', remove: 'remove', addOnce: 'add to playlist', addAgain: 'add again',
+    clearAsk: 'Clear the playlist?', slow: 'Making the voice…', again: 'Let’s hear it again!',
+    nextStory: 'Next story!', end: 'The end! Press play to hear it again.', pic: 'picture', voiceOf: 'voice',
+    hear: 'Listen', think: 'Let’s think!', cover: 'Cover', page: (a, b) => `Page ${a} / ${b}`,
+    tapHint: 'Press play, or tap a sentence to hear it.', readFirst: 'Read first while the voice gets ready.',
+    coverSub: (n) => `${n} stories in easy English`, resume: (t) => `▶ Keep reading · ${t}`,
+    ready: (b) => `Ready (${b})`, synthFail: (m) => `Could not make the voice: ${m}`,
+    loadFail: 'Could not load the voice engine (model files)', loadFailMsg: (m) => `Could not load the voice engine: ${m}`,
+    cast: 'Characters', pages: 'Turn pages', controls: 'Player controls', loading: 'Loading the voice engine…',
+    repeatTitle: 'No repeat: play the list once · Repeat one: this story again and again · Repeat list: start the list again',
+  },
+};
+// 모음 이름(영문 모드)
+const SRC_EN = {
+  탈무드: 'Talmud', 이솝우화: 'Aesop’s Fables', '한국 전래동화': 'Korean Tales', '영국 민담': 'English Tales',
+  '그림 형제': 'Brothers Grimm', 안데르센: 'Andersen', 페로: 'Perrault', '세계 민담': 'World Tales', 고사성어: 'Chinese Fables',
+};
+const VOICE_LABEL_EN = {
+  F1: 'Woman 1', F2: 'Woman 2', F3: 'Woman 3', F4: 'Woman 4', F5: 'Woman 5',
+  M1: 'Man 1', M2: 'Man 2', M3: 'Man 3', M4: 'Man 4', M5: 'Man 5',
+};
 
 // 삽화 배경별 꾸밈 그림과 위치(%)
 const DECO = {
@@ -107,6 +160,19 @@ function storiesFor(l) {
 // 재생목록·이어 읽기는 모드마다 따로 저장
 const keyOf = (k) => (lang === 'en' ? `${k}:en` : k);
 const isEn = () => lang === 'en';
+function t(k, ...args) {
+  const v = UI[lang][k] ?? UI.ko[k];
+  return typeof v === 'function' ? v(...args) : v;
+}
+const srcLabel = (src) => (isEn() ? SRC_EN[src] || src : src);
+// 정적 화면 글자: data-i18n(글자), data-i18n-aria(aria-label), data-i18n-title(title)
+function applyUI() {
+  for (const n of document.querySelectorAll('[data-i18n]')) n.textContent = t(n.dataset.i18n);
+  for (const n of document.querySelectorAll('[data-i18n-aria]')) n.setAttribute('aria-label', t(n.dataset.i18nAria));
+  for (const n of document.querySelectorAll('[data-i18n-title]')) n.title = t(n.dataset.i18nTitle);
+  for (const n of document.querySelectorAll('[data-lang]')) n.hidden = n.dataset.lang !== lang;
+  document.title = t('app');
+}
 function nameOf(who) {
   return story?.names?.[who] || who;
 }
@@ -180,7 +246,9 @@ function cancelPending(from = -1) {
 }
 // 이야기 언어와 빠르기(영문 모드는 조금 천천히)
 function speechOf(c) {
-  return story.lang === 'en' ? { lang: 'en', speed: c.speed * EN_SPEED } : { lang: 'ko', speed: c.speed };
+  return story.lang === 'en'
+    ? { lang: 'en', speed: c.speed * BASE_SPEED * EN_SPEED }
+    : { lang: 'ko', speed: c.speed * BASE_SPEED };
 }
 function audioFor(i) {
   const k = keyFor(i);
@@ -278,28 +346,28 @@ function renderPlaylist() {
   el.playlist.replaceChildren(...playlist.map((id, pos) => {
     const li = document.createElement('li');
     li.classList.toggle('on', pos === plPos);
-    const t = document.createElement('button');
-    t.className = 'pl-title';
-    t.textContent = title(id);
-    t.onclick = () => playFromList(pos);
+    const tb = document.createElement('button');
+    tb.className = 'pl-title';
+    tb.textContent = title(id);
+    tb.onclick = () => playFromList(pos);
     const mk = (label, aria, fn) => {
       const b = document.createElement('button');
       b.className = 'pl-btn'; b.textContent = label; b.setAttribute('aria-label', aria); b.onclick = fn;
       return b;
     };
-    li.append(t,
-      mk('▲', `${title(id)} 위로`, () => moveInList(pos, -1)),
-      mk('▼', `${title(id)} 아래로`, () => moveInList(pos, 1)),
-      mk('✕', `${title(id)} 빼기`, () => removeFromList(pos)));
+    li.append(tb,
+      mk('▲', `${title(id)} ${t('up')}`, () => moveInList(pos, -1)),
+      mk('▼', `${title(id)} ${t('down')}`, () => moveInList(pos, 1)),
+      mk('✕', `${title(id)} ${t('remove')}`, () => removeFromList(pos)));
     return li;
   }));
-  el.plCount.textContent = playlist.length ? `${playlist.length}편` : '';
+  el.plCount.textContent = playlist.length ? t('count', playlist.length) : '';
   el.plEmpty.hidden = playlist.length > 0;
   el.plPlay.disabled = !ready || !playlist.length;
 }
 el.plPlay.onclick = () => playFromList(0);
 el.plClear.onclick = () => {
-  if (!playlist.length || !confirm('재생목록을 비울까요?')) return;
+  if (!playlist.length || !confirm(t('clearAsk'))) return;
   playlist = [];
   plPos = -1;
   savePlaylist();
@@ -327,7 +395,7 @@ function shownStories() {
 }
 function renderFilter() {
   if (srcFilter !== 'all' && !sources().includes(srcFilter)) srcFilter = 'all';
-  const tags = [['all', '전체', stories.length], ...sources().map((src) => [src, src, stories.filter((s) => s.source === src).length])];
+  const tags = [['all', t('all'), stories.length], ...sources().map((src) => [src, srcLabel(src), stories.filter((s) => s.source === src).length])];
   $('srcFilter').replaceChildren(...tags.map(([val, label, n]) => {
     const b = document.createElement('button');
     b.className = 'tag';
@@ -359,7 +427,7 @@ async function run(from) {
     for (let k = idx + 1; k < seq.length; k++) audioFor(k).catch(() => {});
     let pcm;
     // 합성이 오래 걸리면 멈춘 것처럼 보이지 않게 안내
-    const slow = setTimeout(() => { if (my === runId) el.hint.textContent = '목소리를 만드는 중이에요…'; }, 800);
+    const slow = setTimeout(() => { if (my === runId) el.hint.textContent = t('slow'); }, 800);
     try {
       pcm = await cur;
       clearTimeout(slow);
@@ -368,7 +436,7 @@ async function run(from) {
       clearTimeout(slow);
       if (my !== runId) return;
       console.error(e);
-      el.engine.textContent = `음성을 만들지 못했어요: ${e.message}`;
+      el.engine.textContent = t('synthFail', e.message);
       break;
     }
     if (my !== runId) return;
@@ -383,7 +451,7 @@ async function run(from) {
   if (idx >= seq.length) {
     const nx = nextStep();
     if (nx) {
-      el.hint.textContent = nx.id === story.id ? '처음부터 다시 들려줄게요.' : '다음 이야기로 넘어갈게요.';
+      el.hint.textContent = nx.id === story.id ? t('again') : t('nextStory');
       await wait(NEXT_STORY_MS);
       if (my !== runId) return;
       selectStory(nx.id, nx.pos);
@@ -392,7 +460,7 @@ async function run(from) {
     }
     idx = 0;
     highlight(-1);
-    el.hint.textContent = '끝! 다시 들으려면 재생을 눌러 주세요.';
+    el.hint.textContent = t('end');
     warmup(0);
   }
   renderPlayState();
@@ -419,15 +487,15 @@ function renderStoryList() {
     b.setAttribute('aria-current', String(story?.id === s.id));
     const pic = document.createElement('span'); pic.className = 's-pic'; pic.setAttribute('aria-hidden', 'true');
     pic.textContent = s.emoji || '📖';
-    const t = document.createElement('span'); t.className = 's-title'; t.textContent = s.title;
-    const src = document.createElement('span'); src.className = 's-src'; src.textContent = s.koTitle ? `${s.source} · ${s.koTitle}` : s.source;
-    b.append(pic, t, src);
+    const ttl = document.createElement('span'); ttl.className = 's-title'; ttl.textContent = s.title;
+    const src = document.createElement('span'); src.className = 's-src'; src.textContent = srcLabel(s.source);
+    b.append(pic, ttl, src);
     b.onclick = () => { selectStory(s.id); closeShelf(); };
     const add = document.createElement('button');
     add.className = 'add';
     const inList = playlist.includes(s.id);
     add.setAttribute('aria-pressed', String(inList));
-    add.setAttribute('aria-label', inList ? `${s.title} 재생목록에 한 번 더 담기` : `${s.title} 재생목록에 담기`);
+    add.setAttribute('aria-label', `${s.title} ${t(inList ? 'addAgain' : 'addOnce')}`);
     add.textContent = inList ? '✓' : '＋';
     add.onclick = () => addToList(s.id);
     li.append(b, add);
@@ -436,7 +504,7 @@ function renderStoryList() {
 }
 // 삽화: story.image(그린 그림)가 있으면 그것을, 없으면 배경 + 그림 장면(scene)을 그림
 function renderScene() {
-  el.scene.setAttribute('aria-label', `${story.title} 그림`);
+  el.scene.setAttribute('aria-label', `${story.title} ${t('pic')}`);
   if (story.image) {
     const img = document.createElement('img');
     img.src = story.image;
@@ -482,9 +550,9 @@ function renderCast() {
     chip.style.setProperty('--c', colorOf(name) || 'var(--ink-soft)');
     const n = document.createElement('strong'); n.textContent = nameOf(name);
     const sel = document.createElement('select');
-    sel.setAttribute('aria-label', `${nameOf(name)} 목소리`);
+    sel.setAttribute('aria-label', `${nameOf(name)} ${t('voiceOf')}`);
     for (const v of VOICES) {
-      const o = document.createElement('option'); o.value = v; o.textContent = VOICE_LABEL[v];
+      const o = document.createElement('option'); o.value = v; o.textContent = (isEn() ? VOICE_LABEL_EN : VOICE_LABEL)[v];
       if (v === c.voice) o.selected = true;
       sel.append(o);
     }
@@ -495,7 +563,7 @@ function renderCast() {
       else { cancelPending(); warmup(idx); }
     };
     const hear = document.createElement('button');
-    hear.textContent = '들어보기';
+    hear.textContent = t('hear');
     hear.disabled = !ready;
     hear.onclick = async () => {
       if (!ready) return;
@@ -537,7 +605,7 @@ function renderBook() {
         askBox = document.createElement('section');
         askBox.className = 'ask';
         const h = document.createElement('h3');
-        h.textContent = isEn() ? 'Let’s think!' : '생각해 볼까요?';
+        h.textContent = t('think');
         askBox.append(h);
         units.push({ node: askBox, first: i, ask: true });
       }
@@ -618,7 +686,7 @@ function showPage(n) {
   pages.forEach((p, k) => { p.hidden = k !== curPage; });
   el.page.classList.toggle('compact', curPage > 0);
   el.page.classList.toggle('cover-page', curPage === 0);
-  el.pgNum.textContent = curPage === 0 ? '표지' : `${curPage} / ${pages.length - 1} 쪽`;
+  el.pgNum.textContent = curPage === 0 ? t('cover') : t('page', curPage, pages.length - 1);
   el.pgPrev.disabled = curPage === 0;
   el.pgNext.disabled = curPage === pages.length - 1;
 }
@@ -725,7 +793,7 @@ function highlight(i) {
 }
 function renderPlayState() {
   el.play.textContent = playing ? '❚❚' : '▶';
-  el.play.setAttribute('aria-label', playing ? '일시정지' : '재생');
+  el.play.setAttribute('aria-label', playing ? t('pause') : t('play'));
   el.play.disabled = !ready || !story;
   syncWakeLock();
 }
@@ -758,7 +826,7 @@ function selectStory(id, pos = -1, { anim = true } = {}) {
   seq = buildSeq();
   idx = 0;
   el.storyTitle.textContent = story.title;
-  el.storySource.textContent = story.koTitle ? `${story.source} · ${story.koTitle}` : story.source;
+  el.storySource.textContent = srcLabel(story.source);
   el.page.style.setProperty('--cv', COVER_COLORS[Math.max(0, sources().indexOf(story.source)) % COVER_COLORS.length]);
   renderFilter();
   renderStoryList();
@@ -769,7 +837,7 @@ function selectStory(id, pos = -1, { anim = true } = {}) {
   renderCast();
   renderBook();
   highlight(-1);
-  el.hint.textContent = ready ? '재생을 누르거나, 듣고 싶은 문장을 눌러 주세요.' : '목소리를 준비하는 동안 먼저 읽어 보세요.';
+  el.hint.textContent = ready ? t('tapHint') : t('readFirst');
   renderPlayState();
   saveLast();
   warmup(0);
@@ -839,12 +907,10 @@ document.addEventListener('keydown', (e) => {
 // 들어올 때와 "이야기 극장"을 누를 때 보여 줌. 표지의 버튼을 누르는 순간 오디오도 깨워 둠(브라우저 자동 재생 정책).
 const cover = $('cover');
 function renderCover() {
-  $('coverSub').textContent = isEn()
-    ? `영어로 듣는 옛이야기 ${stories.length}편 · 영어 학습용`
-    : `옛이야기 ${stories.length}편을 인물마다 다른 목소리로 들려줘요`;
+  $('coverSub').textContent = t('coverSub', stories.length);
   $('coverToc').replaceChildren(...sources().map((src) => {
     const b = document.createElement('button');
-    b.append(src, Object.assign(document.createElement('span'), { textContent: stories.filter((s) => s.source === src).length }));
+    b.append(srcLabel(src), Object.assign(document.createElement('span'), { textContent: stories.filter((s) => s.source === src).length }));
     b.onclick = () => {
       srcFilter = src;
       try { localStorage.setItem(FILTER_KEY, src); } catch (_) { /* ignore */ }
@@ -857,7 +923,7 @@ function renderCover() {
   const resume = $('coverResume');
   const lastStory = last && stories.find((s) => s.id === last.id);
   resume.hidden = !lastStory || (last.idx === 0 && lastStory === stories[0]);
-  if (lastStory) resume.textContent = `▶ 이어 읽기 · ${lastStory.title}`;
+  if (lastStory) resume.textContent = t('resume', lastStory.title);
   resume.onclick = () => openBook(last.id, last.idx);
 }
 function showCover() {
@@ -889,9 +955,8 @@ $('coverOpen').onclick = () => {
 // 한국어 ↔ 영문(학습용) 모드 바꾸기: 상단과 표지의 버튼
 function renderLang() {
   document.documentElement.lang = lang;
-  $('langBtn').textContent = isEn() ? '가 한국어' : 'A English';
+  applyUI();
   $('langBtn').setAttribute('aria-pressed', String(isEn()));
-  $('coverLang').textContent = isEn() ? '가 한국어로 듣기' : 'A 영어로 듣기 (학습용)';
   el.openEditor.hidden = isEn(); // 내 이야기는 한국어 모드에서만
   const hasEn = Object.keys(EN).length > 0; // 영어 원고가 없으면 버튼을 숨김
   $('langBtn').hidden = !hasEn;
@@ -909,6 +974,8 @@ function setLang(l) {
   story = null;
   selectStory((loadLast() || { id: stories[0].id }).id, -1, { anim: false });
   renderCover();
+  renderPlaylist();
+  if (ready) el.engine.textContent = t('ready', tts.backend, tts.source);
 }
 $('langBtn').onclick = () => setLang(isEn() ? 'ko' : 'en');
 $('coverLang').onclick = () => setLang(isEn() ? 'ko' : 'en');
@@ -926,34 +993,42 @@ showCover();
 let statusTimer = 0;
 let statusMsg = '';
 let lastStep = '';
+// 음성 엔진이 보내는 진행 문구(한국어)를 영문 모드에서는 영어로
+function enStatus(m) {
+  const n = m.match(/\((\d)\/4/)?.[1];
+  const size = m.match(/[\d.]+ \/ [\d.]+ MB|[\d.]+ MB/)?.[0] || '';
+  if (/내려받는/.test(m)) return `Downloading the voice (${n}/4) ${size}`.trim();
+  if (n) return `Getting the voice ready (${n}/4)`;
+  return t('loading');
+}
 function setStatus(msg) {
   statusMsg = msg;
   const step = msg.replace(/[\d.]+ ?\/? ?[\d.]* ?MB/g, '').trim();
   if (step !== lastStep) { lastStep = step; note('▶', [step]); }
   if (statusTimer) return;
-  statusTimer = setTimeout(() => { statusTimer = 0; el.engine.textContent = statusMsg; }, 250);
+  statusTimer = setTimeout(() => { statusTimer = 0; el.engine.textContent = isEn() ? enStatus(statusMsg) : statusMsg; }, 250);
 }
 tts.load(setStatus)
   .then(async () => {
     await tts.style(castOf(seq[0].who).voice);
     ready = true;
     clearTimeout(statusTimer); statusTimer = 0;
-    el.engine.textContent = `준비 완료 (${tts.backend} · ${tts.source})`;
+    el.engine.textContent = t('ready', tts.backend, tts.source);
     note('▶', [`${el.engine.textContent}${tts.inWorker ? ' · 워커' : ' · 화면 스레드'}`]);
     // WebGPU가 없어 CPU(WASM)로 도는 기기는 합성이 느리므로 품질 기본값을 '빠르게'로
     if (tts.backend === 'WASM') el.steps.value = '5';
     renderCast();
     renderPlaylist();
     renderPlayState();
-    if (!playing) el.hint.textContent = '재생을 누르거나, 듣고 싶은 문장을 눌러 주세요.';
+    if (!playing) el.hint.textContent = t('tapHint');
     warmup(idx);
   })
   .catch((e) => {
     console.error(e);
     clearTimeout(statusTimer); statusTimer = 0;
     el.engine.textContent = /모델을 찾지 못했어요/.test(e.message)
-      ? '음성 엔진을 불러오지 못했어요 (모델 파일을 받지 못함)'
-      : `음성 엔진을 불러오지 못했어요: ${e.message}`;
+      ? t('loadFail')
+      : t('loadFailMsg', e.message);
     el.engine.title = e.message;
     el.engine.classList.add('has-detail');
   });

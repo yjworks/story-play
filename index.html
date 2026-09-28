@@ -36,25 +36,25 @@
 </head>
 <body>
   <header class="top">
-    <button id="openShelf" class="shelf-btn" aria-controls="shelf" aria-expanded="false">📚 이야기 목록</button>
-    <h1 id="homeTitle" role="button" tabindex="0" title="처음 표지로">이야기 극장</h1>
-    <p id="engine" class="engine" aria-live="polite">음성 엔진 불러오는 중</p>
-    <button id="langBtn" class="ai-badge lang-btn" aria-pressed="false" title="한국어 / 영어(학습용) 바꾸기">A English</button>
-    <button id="aboutBtn" class="ai-badge" aria-haspopup="dialog" title="AI 목소리 안내">🤖 AI 목소리</button>
+    <button id="openShelf" class="shelf-btn" aria-controls="shelf" aria-expanded="false" data-i18n="shelf">📚 이야기 목록</button>
+    <h1 id="homeTitle" role="button" tabindex="0" title="처음 표지로" data-i18n="app" data-i18n-title="toCover">이야기 극장</h1>
+    <p id="engine" class="engine" aria-live="polite" data-i18n="loading">음성 엔진 불러오는 중</p>
+    <button id="langBtn" class="ai-badge lang-btn" aria-pressed="false" data-i18n="langBtn" data-i18n-title="langTitle">A English</button>
+    <button id="aboutBtn" class="ai-badge" aria-haspopup="dialog" data-i18n="ai" data-i18n-title="aiTitle">🤖 AI 목소리</button>
   </header>
 
   <!-- 앱 표지: 들어올 때와 "이야기 극장"을 누를 때 -->
   <section id="cover" class="cover" aria-label="이야기 극장 표지">
     <div class="cover-book">
       <div class="cover-deco" aria-hidden="true">🦊 🐢 🐯 🍎 👑 🐷</div>
-      <h2 class="cover-title">이야기 극장</h2>
+      <h2 class="cover-title" data-i18n="app">이야기 극장</h2>
       <p id="coverSub" class="cover-sub">옛이야기를 목소리로 들려줘요</p>
       <div id="coverToc" class="cover-toc" role="group" aria-label="모음 고르기"></div>
       <div class="cover-actions">
-        <button id="coverOpen" class="cover-btn">📖 책 펼치기</button>
+        <button id="coverOpen" class="cover-btn" data-i18n="open">📖 책 펼치기</button>
         <button id="coverResume" class="cover-btn ghost-btn" hidden></button>
       </div>
-      <button id="coverLang" class="cover-lang">A 영어로 듣기 (학습용)</button>
+      <button id="coverLang" class="cover-lang" data-i18n="coverLang">A 영어로 듣기 (학습용)</button>
       <p id="coverEngine" class="cover-engine" aria-live="polite"></p>
     </div>
   </section>
@@ -62,24 +62,24 @@
   <div class="layout">
     <aside id="shelf" class="shelf" aria-label="이야기 목록과 재생목록">
       <div class="shelf-top">
-        <strong>📚 이야기 목록</strong>
-        <button id="closeShelf" class="shelf-close" aria-label="닫기">✕</button>
+        <strong data-i18n="shelf">📚 이야기 목록</strong>
+        <button id="closeShelf" class="shelf-close" aria-label="닫기" data-i18n-aria="close">✕</button>
       </div>
 
       <section class="plist" aria-label="재생목록">
         <div class="plist-head">
-          <h2>재생목록 <span id="plCount" class="count"></span></h2>
-          <button id="plPlay" class="mini solid-mini" disabled>▶ 목록 재생</button>
-          <button id="plClear" class="mini">비우기</button>
+          <h2><span data-i18n="playlist">재생목록</span> <span id="plCount" class="count"></span></h2>
+          <button id="plPlay" class="mini solid-mini" disabled data-i18n="plPlay">▶ 목록 재생</button>
+          <button id="plClear" class="mini" data-i18n="plClear">비우기</button>
         </div>
         <ol id="playlist" class="playlist"></ol>
-        <p id="plEmpty" class="hint">이야기 옆 ＋를 누르면 여기에 담겨요.</p>
+        <p id="plEmpty" class="hint" data-i18n="plEmpty">이야기 옆 ＋를 누르면 여기에 담겨요.</p>
         <div class="plist-add">
-          <button id="plAddShown" class="mini">아래 목록 모두 담기</button>
+          <button id="plAddShown" class="mini" data-i18n="plAddShown">아래 목록 모두 담기</button>
         </div>
       </section>
 
-      <h2>이야기 고르기</h2>
+      <h2 data-i18n="choose">이야기 고르기</h2>
       <div id="srcFilter" class="filter" role="group" aria-label="이야기 모음 고르기"></div>
       <ul id="storyList" class="story-list"></ul>
       <button id="openEditor" class="ghost">내 이야기 넣기</button>
@@ -93,9 +93,9 @@
           <div class="head-text">
             <p id="storySource" class="source"></p>
             <h2 id="storyTitle" class="title"></h2>
-            <p id="castLegend" class="legend" aria-label="등장인물"></p>
+            <p id="castLegend" class="legend" aria-label="등장인물" data-i18n-aria="cast"></p>
             <details id="voices" class="voices">
-              <summary>목소리 바꾸기</summary>
+              <summary data-i18n="voices">목소리 바꾸기</summary>
               <div id="castList" class="cast-list"></div>
             </details>
           </div>
@@ -103,32 +103,32 @@
 
         <div id="book" class="book"></div>
 
-        <nav class="pager" aria-label="쪽 넘기기">
-          <button id="pgPrev" class="pg-btn">◀ 앞 쪽</button>
+        <nav class="pager" aria-label="쪽 넘기기" data-i18n-aria="pages">
+          <button id="pgPrev" class="pg-btn" data-i18n="pgPrev">◀ 앞 쪽</button>
           <span id="pgNum" class="pg-num"></span>
-          <button id="pgNext" class="pg-btn">다음 쪽 ▶</button>
+          <button id="pgNext" class="pg-btn" data-i18n="pgNext">다음 쪽 ▶</button>
         </nav>
         <p id="hint" class="hint-line" aria-live="polite"></p>
       </article>
     </main>
   </div>
 
-  <nav class="transport" aria-label="재생 조작">
-    <button id="prevBtn" class="tbtn" aria-label="이전 문장">◀◀</button>
+  <nav class="transport" aria-label="재생 조작" data-i18n-aria="controls">
+    <button id="prevBtn" class="tbtn" aria-label="이전 문장" data-i18n-aria="prevLine">◀◀</button>
     <button id="playBtn" class="tbtn play" aria-label="재생" disabled>▶</button>
-    <button id="nextBtn" class="tbtn" aria-label="다음 문장">▶▶</button>
-    <label class="repeat" title="반복 안 함: 재생목록을 끝까지 한 번 · 한 편 반복: 지금 이야기만 계속 · 목록 반복: 재생목록을 처음부터 다시">반복
+    <button id="nextBtn" class="tbtn" aria-label="다음 문장" data-i18n-aria="nextLine">▶▶</button>
+    <label class="repeat" data-i18n-title="repeatTitle"><span data-i18n="repeat">반복</span>
       <select id="repeat">
-        <option value="off">반복 안 함</option>
-        <option value="one">한 편 반복</option>
-        <option value="list">목록 반복</option>
+        <option value="off" data-i18n="rOff">반복 안 함</option>
+        <option value="one" data-i18n="rOne">한 편 반복</option>
+        <option value="list" data-i18n="rList">목록 반복</option>
       </select>
     </label>
-    <label class="quality">목소리 품질
+    <label class="quality"><span data-i18n="quality">목소리 품질</span>
       <select id="steps">
-        <option value="5">빠르게</option>
-        <option value="8" selected>보통</option>
-        <option value="12">좋게</option>
+        <option value="5" data-i18n="qFast">빠르게</option>
+        <option value="8" selected data-i18n="qMid">보통</option>
+        <option value="12" data-i18n="qGood">좋게</option>
       </select>
     </label>
     <span id="progress" class="progress"></span>
@@ -151,18 +151,32 @@
 
   <dialog id="about" class="editor about">
     <form method="dialog" class="editor-form">
+      <div data-lang="ko">
       <h2>🤖 AI 목소리 안내</h2>
       <p class="about-kid">이 이야기의 목소리는 사람이 녹음한 게 아니라, 인공지능(AI)이 이 기기 안에서 만든 소리예요.</p>
       <h3>보호자 안내</h3>
       <ul class="about-list">
-        <li>음성 합성 모델: Supertonic 3 (Supertone Inc.), BigScience Open RAIL-M 라이선스. 모델 파일은 수정하지 않고 사용합니다. <a href="licenses/OpenRAIL-M.txt" target="_blank" rel="noopener">라이선스 원문</a></li>
+        <li>음성 합성 모델: Supertonic 3 (Supertone Inc.), BigScience Open RAIL-M 라이선스. PC는 원본을, 휴대폰·태블릿은 8비트로 변환한 파일을 씁니다(변환 사실은 모델 폴더의 MODIFICATIONS.md에 표시). <a href="licenses/OpenRAIL-M.txt" target="_blank" rel="noopener">라이선스 원문</a></li>
         <li>모델 라이선스에 따라, 이 앱과 모델을 불법 행위, 미성년자에게 해를 끼치는 일, 동의 없는 사칭(딥페이크), 기계가 만든 것임을 숨긴 콘텐츠 배포, 의료 조언 등 라이선스 Attachment A가 금지하는 용도로 쓸 수 없습니다.</li>
         <li>이 앱은 Supertone Inc.와 제휴하거나 보증받은 것이 아닙니다. 원 저작권자는 2026년 청산되었고 모델은 "있는 그대로" 제공됩니다.</li>
         <li>재생목록과 설정은 이 기기에만 저장되며, 개인정보를 서버로 보내지 않습니다.</li>
         <li>그 밖의 구성 요소: 예제 코드 <a href="licenses/Supertonic-code-MIT.txt" target="_blank" rel="noopener">Supertonic (MIT)</a>, <a href="licenses/onnxruntime-MIT.txt" target="_blank" rel="noopener">ONNX Runtime Web (MIT)</a>, 글꼴 <a href="licenses/Jua-OFL.txt" target="_blank" rel="noopener">Jua</a>·<a href="licenses/NotoSansKR-OFL.txt" target="_blank" rel="noopener">Noto Sans KR</a> (SIL OFL 1.1). 이야기 문장은 모두 자체 각색입니다.</li>
       </ul>
+      </div>
+      <div data-lang="en" hidden>
+      <h2>🤖 About the AI voice</h2>
+      <p class="about-kid">The voices in these stories are not recorded by people. An AI makes them right here on this device.</p>
+      <h3>For parents</h3>
+      <ul class="about-list">
+        <li>Speech model: Supertonic 3 (Supertone Inc.), BigScience Open RAIL-M license. Computers use the original files; phones and tablets use an 8-bit converted copy (noted in MODIFICATIONS.md in the model folder). <a href="licenses/OpenRAIL-M.txt" target="_blank" rel="noopener">License text</a></li>
+        <li>Under the model license, this app and the model may not be used for the purposes banned in Attachment A of the license, such as illegal acts, harming minors, impersonation without consent (deepfakes), sharing machine-made content while hiding that it is machine-made, or medical advice.</li>
+        <li>This app is not affiliated with or endorsed by Supertone Inc. The original rights holder was liquidated in 2026, and the model is provided "as is".</li>
+        <li>Your playlist and settings stay on this device. No personal data is sent to any server.</li>
+        <li>Other parts: <a href="licenses/Supertonic-code-MIT.txt" target="_blank" rel="noopener">Supertonic example code (MIT)</a>, <a href="licenses/onnxruntime-MIT.txt" target="_blank" rel="noopener">ONNX Runtime Web (MIT)</a>, fonts <a href="licenses/Jua-OFL.txt" target="_blank" rel="noopener">Jua</a> and <a href="licenses/NotoSansKR-OFL.txt" target="_blank" rel="noopener">Noto Sans KR</a> (SIL OFL 1.1). All story texts are our own adaptations.</li>
+      </ul>
+      </div>
       <div class="editor-actions">
-        <button value="close" class="solid">닫기</button>
+        <button value="close" class="solid" data-i18n="close">닫기</button>
       </div>
     </form>
   </dialog>
