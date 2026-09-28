@@ -31,8 +31,9 @@ const FILTER_KEY = 'story-player:filter';
 const LAST_KEY = 'story-player:last'; // 이어 읽기: { id, idx }
 // 이야기 표지 색 (모음 순서대로)
 const COVER_COLORS = ['#2f7d6d', '#4f7a2e', '#b5452f', '#3b5ca8', '#7a4a9e', '#b0306a', '#b8741a', '#2b6f8f', '#8a5a2b', '#5a6b2f'];
-const LOOKAHEAD = 4; // 재생 중 미리 합성해 둘 문장 수 (이야기를 고르면 첫 문장 + LOOKAHEAD 문장도 미리 합성)
-// 화면을 끄거나 다른 앱으로 가면 휴대폰이 계산을 늦춰서, 앞서 만들어 둔 문장이 많을수록 끊김이 늦게 옴
+const LOOKAHEAD = 4; // 이야기를 고르면 첫 문장 + LOOKAHEAD 문장을 미리 합성. 위치를 옮겨도 이만큼은 버리지 않음
+// 재생 중에는 이야기 끝까지 차례로 미리 합성함(합성이 음성보다 빠르므로 여유분이 계속 쌓임).
+// 화면을 끄면 휴대폰이 계산을 거의 멈추는데(S24+ 확인), 그때까지 쌓아 둔 문장은 끝까지 들려줄 수 있음.
 const NARRATION_PER_PARA = 3; // 해설 문장을 한 문단에 몇 개까지 이어 붙일지
 const GAP_MS = 250; // 문장 사이 쉼
 const THINK_MS = 7000; // 질문 뒤 아이가 생각할 시간
@@ -149,6 +150,8 @@ function cancelPending(from = -1) {
   for (let k = 0; from >= 0 && k <= LOOKAHEAD && from + k < seq.length; k++) keep.add(keyFor(from + k));
   for (const [k, e] of audioCache) {
     if (!e.done && !keep.has(k)) { e.ctl.abort(); audioCache.delete(k); }
+    // 다른 이야기의 다 만든 소리는 지움(이야기 한 편이 수십 MB라 쌓이면 휴대폰 메모리가 모자람)
+    else if (e.done && story && !k.startsWith(`${story.id}|`)) audioCache.delete(k);
   }
 }
 function audioFor(i) {
@@ -325,7 +328,7 @@ async function run(from) {
     highlight(idx);
     const t0 = performance.now();
     const cur = audioFor(idx);
-    for (let k = 1; k <= LOOKAHEAD && idx + k < seq.length; k++) audioFor(idx + k).catch(() => {});
+    for (let k = idx + 1; k < seq.length; k++) audioFor(k).catch(() => {});
     let pcm;
     // 합성이 오래 걸리면 멈춘 것처럼 보이지 않게 안내
     const slow = setTimeout(() => { if (my === runId) el.hint.textContent = '목소리를 만드는 중이에요…'; }, 800);
@@ -635,7 +638,7 @@ function turnPage(d) {
   flip(d > 0 ? 'fwd' : 'back', () => showPage(n));
   el.progress.textContent = `${i + 1} / ${seq.length}`;
   saveLast();
-  cancelPending();
+  cancelPending(i);
   warmup(i);
 }
 el.pgPrev.onclick = () => turnPage(-1);
@@ -841,7 +844,7 @@ function openBook(id, at = 0) {
     idx = at;
     showPage(pageOf[at]);
     el.progress.textContent = `${at + 1} / ${seq.length}`;
-    cancelPending();
+    cancelPending(at);
     warmup(at);
   }
   if (reduceMotion()) { cover.hidden = true; return; }
