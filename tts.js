@@ -271,6 +271,17 @@ export class SupertonicTTS {
       if (this.sessions) break;
     }
     if (!this.sessions) throw new Error(`모델을 찾지 못했어요. ${tried.join(' / ')}`);
+
+    // 지금 쓰는 모델이 아닌 예전 모델 파일(예: 8비트로 바꾸기 전의 32비트)은 기기 저장소에서 지움
+    try {
+      const cache = await openCache();
+      for (const req of (await cache?.keys()) || []) {
+        if (req.url.endsWith('.onnx') && !req.url.startsWith(`${this.onnxDir}/`)) {
+          await cache.delete(req);
+          console.info(`[tts] 쓰지 않는 예전 모델 파일 정리: ${req.url.split('/').slice(-3).join('/')}`);
+        }
+      }
+    } catch (_) { /* 정리 실패는 무시 */ }
     this.loadSeconds = (performance.now() - t0) / 1000;
     console.info(`[tts] 로딩 ${this.loadSeconds.toFixed(1)}s, backend=${this.backend}, `
       + `threads=${ort.env.wasm.numThreads}, crossOriginIsolated=${self.crossOriginIsolated}`);
