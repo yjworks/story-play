@@ -48,6 +48,7 @@ ES module과 fetch를 쓰므로 file://로 열면 동작하지 않습니다. Git
 | `stories.js` | 이야기 25편. 등장인물 → 목소리(F1~F5, M1~M5)·속도, 목록 아이콘, 삽화(`scene`), 마무리 질문(`outro`) |
 | `app.js` | 플레이어. 이야기를 고르면 첫 3줄을 미리 합성하고, 재생 중에는 다음 2줄을 미리 합성합니다. 목소리나 품질을 바꾸면 시작 전인 미리 합성은 버립니다. 대사 사이에 끊기면 `[player] … 대기`를 출력합니다 |
 | `index.html`, `style.css` | 화면. 한국어 줄바꿈은 `word-break: keep-all`로 어절 단위로 끊습니다 |
+| `icons/`, `manifest.webmanifest` | 파비콘(SVG, 32px), 홈 화면 아이콘(180/192/512px, 마스크형 512px), 앱 매니페스트. Chrome "홈 화면에 추가" 시 앱처럼 전체 화면으로 열림. 원본은 `icons/icon.svg`, `icons/maskable.svg` |
 
 화면의 "내 이야기 넣기"에서 `이름: 대사` 형식으로 붙여 넣으면 목소리를 자동으로 배정하고 localStorage에 저장합니다.
 
