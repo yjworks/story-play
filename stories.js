@@ -11,8 +11,13 @@ import world from './stories/world.js';
 import gosa from './stories/gosa.js';
 import enSet1 from './stories/en/set1.js';
 import enSet2 from './stories/en/set2.js';
+import enSet3 from './stories/en/set3.js';
+import enSet4 from './stories/en/set4.js';
+import enSet5 from './stories/en/set5.js';
+import enSet6 from './stories/en/set6.js';
+import enSet7 from './stories/en/set7.js';
 
 export const STORIES = [...talmud, ...aesop, ...korean, ...english, ...grimm, ...andersen, ...perrault, ...world, ...gosa];
 
 // 영어 학습용 원고(영문 모드). 키 = 이야기 id. 형식은 stories/en/*.js 참고.
-export const EN = { ...enSet1, ...enSet2 };
+export const EN = { ...enSet1, ...enSet2, ...enSet3, ...enSet4, ...enSet5, ...enSet6, ...enSet7 };
