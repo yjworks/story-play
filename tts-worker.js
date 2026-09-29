@@ -20,7 +20,7 @@ self.onmessage = async ({ data }) => {
   const { type, id } = data;
   try {
     if (type === 'load') {
-      await tts.load((msg) => post({ type: 'status', msg }), { search: data.search });
+      await tts.load((msg) => post({ type: 'status', msg }), { search: data.search, mobile: data.mobile });
       post({ type: 'ready', id, backend: tts.backend, source: tts.source, sampleRate: tts.sampleRate });
     } else if (type === 'style') {
       await tts.style(data.voice);

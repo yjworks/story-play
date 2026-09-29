@@ -31,11 +31,17 @@ const OFFICIAL = {
 const LOCAL = { name: '자체 호스팅', base: './assets', local: true };
 
 // search: 페이지 주소의 ?… 부분. 워커 안에서는 location 이 워커 파일 주소라서 페이지에서 넘겨받음.
-// ep: 'webgpu' 면 32비트 먼저, 'wasm' 이면 8비트 먼저
-function modelSources(search = self.location?.search || '', ep = 'wasm') {
+// small: 8비트 먼저(WASM, 또는 WebGPU라도 휴대폰·태블릿이면 — 받는 양·메모리를 줄이려고). 아니면 32비트 먼저
+// 휴대폰·태블릿: iPhone/Android, 그리고 UA가 Mac인 iPad(터치 지원으로 구분)
+export function isMobileDevice() {
+  const nav = self.navigator || {};
+  const ua = nav.userAgent || '';
+  return /iPhone|iPad|iPod|Android|Mobile/i.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1);
+}
+function modelSources(search = self.location?.search || '', small = true) {
   const q = new URLSearchParams(search).get('model');
   const m = q?.match(/^([\w.-]+\/[\w.-]+)(?:@([\w.-]+))?(?:\/([\w./-]+))?$/);
-  const list = ep === 'webgpu'
+  const list = !small
     ? [LOCAL, EDGE_LAB, EDGE_LAB_INT8, EDGE_LAB_INT8_MAIN, OFFICIAL]
     : [LOCAL, EDGE_LAB_INT8, EDGE_LAB_INT8_MAIN, EDGE_LAB, OFFICIAL];
   // ?model= 로 지정한 위치를 먼저 시도하고, 실패하면 기본 후보로 넘어감
@@ -190,7 +196,8 @@ export class SupertonicTTS {
 
   get sampleRate() { return this.cfgs.ae.sample_rate; }
 
-  async load(onStatus, { search } = {}) {
+  // mobile: 휴대폰·태블릿 여부(페이지에서 넘겨받음. iPad Safari는 UA가 Mac이라 워커 안에서는 알 수 없음)
+  async load(onStatus, { search, mobile = isMobileDevice() } = {}) {
     const t0 = performance.now();
     // 저장 공간 부족 시 브라우저가 모델 캐시를 지우지 않도록 영구 저장 요청
     try { await navigator.storage?.persist?.(); } catch (_) { /* unsupported */ }
@@ -251,7 +258,7 @@ export class SupertonicTTS {
     eps.push('wasm');
     console.info(`[tts] 계산 방식 후보: ${eps.join(' → ')}`);
     for (const ep of eps) {
-    for (const src of modelSources(search, ep)) {
+    for (const src of modelSources(search, ep === 'wasm' || mobile)) {
       for (const onnxDir of [`${src.base}/onnx`, src.base]) {
         try {
           if (src.local) {
