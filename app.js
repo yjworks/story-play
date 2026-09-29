@@ -275,7 +275,16 @@ function warmup(from = 0) {
 
 /* ---------- 오디오 ---------- */
 function ensureCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // iPhone Safari: 무음 모드(옆 스위치)에서는 Web Audio 소리가 꺼짐 → 음악 앱처럼 '재생' 용도로 알려 무음 모드에서도 나오게.
+  // audioSession 은 Safari 16.4+ 에만 있음(없으면 무시).
+  try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (_) { /* unsupported */ }
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // 소리가 안 날 때 원인을 보려고 오디오 상태를 진단 기록에 남김(iOS는 'interrupted' 상태가 있음)
+    const logState = () => console.info(`[player] 오디오 ${audioCtx.state}, audioSession=${navigator.audioSession?.type || '없음'}`);
+    audioCtx.onstatechange = logState;
+    logState();
+  }
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
