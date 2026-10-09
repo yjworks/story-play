@@ -99,7 +99,7 @@ export default {
       ['해설', 'One day, while planting rice, he suddenly feels it is all pointless.'],
       ['해설', 'Oh, my stomach! he cries, and he lies down on the bank of the rice field.'],
       ['해설', 'The father-in-law runs over angrily, grabs him by the collar, and slaps him.'],
-      ['해설', 'This man is known in the village as Yokpiri, a joke on his real name Bongpil and the word for curses.'],
+      ['해설', 'His name is Bongpil, but villagers call him Yokpiri, from yok, the word for curses.'],
       ['해설', 'He manages a rich family’s land, so villagers must flatter him or lose their fields.'],
       ['해설', 'But he cannot be too harsh with the narrator, because the busy farming season is coming.'],
       ['해설', 'Last year, he promised a wedding in the fall to get the narrator back to work.'],
