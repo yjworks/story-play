@@ -36,6 +36,25 @@ const LANG_KEY = 'story-player:lang'; // 'ko' | 'en' (영문 모드: 영어 학�
 const BASE_SPEED = 0.93;
 // 영문 모드는 영어를 처음 배우는 아이용이라 한 번 더 천천히
 const EN_SPEED = 0.9;
+// 목소리 나이: 음 높이(pitch)는 모델에 입력이 없어 재생 속도(playbackRate)로 올리고 내림.
+// 합성 빠르기를 pitch 로 나눠 두므로 말 빠르기는 그대로이고 음 높이만 바뀜(울림도 함께 올라가 아이 목소리처럼 들림).
+// ±12%를 넘으면 기계음이 나서 그 안에서만 씀. speed 는 인물 빠르기에 한 번 더 곱함.
+const AGES = {
+  child: { pitch: 1.10, speed: 1.05 },
+  normal: { pitch: 1.0, speed: 1.0 },
+  adult: { pitch: 0.96, speed: 0.97 },
+  old: { pitch: 0.92, speed: 0.9 },
+};
+const AGE_LABEL = { child: '아이', normal: '보통', adult: '어른', old: '노인' };
+const AGE_LABEL_EN = { child: 'Child', normal: 'Normal', adult: 'Adult', old: 'Elder' };
+// 이야기 파일 cast 에 age 가 없으면 이름으로 짐작(해설은 늘 보통)
+const CHILD_RE = /(아이(?!린)|꼬마|아기|소년|소녀|막내|손자|손녀|새끼|어린)/;
+const OLD_RE = /(할머니|할아버지|할멈|영감|노인|노파|늙은)/;
+function guessAge(name) {
+  if (name === NARRATOR) return 'normal';
+  return CHILD_RE.test(name) ? 'child' : OLD_RE.test(name) ? 'old' : 'normal';
+}
+const ageOf = (c) => AGES[c.age] || AGES.normal;
 // 이야기 표지 색 (모음 순서대로)
 const COVER_COLORS = ['#2f7d6d', '#4f7a2e', '#b5452f', '#3b5ca8', '#7a4a9e', '#b0306a', '#b8741a', '#2b6f8f', '#8a5a2b', '#5a6b2f'];
 const LOOKAHEAD = 4; // 이야기를 고르면 첫 문장 + LOOKAHEAD 문장을 미리 합성. 위치를 옮겨도 이만큼은 버리지 않음
@@ -62,7 +81,7 @@ const UI = {
     prevLine: '이전 문장', nextLine: '다음 문장', play: '재생', pause: '일시정지', all: '전체', count: (n) => `${n}편`,
     up: '위로', down: '아래로', remove: '빼기', addOnce: '재생목록에 담기', addAgain: '재생목록에 한 번 더 담기',
     clearAsk: '재생목록을 비울까요?', slow: '목소리를 만드는 중이에요…', again: '처음부터 다시 들려줄게요.',
-    nextStory: '다음 이야기로 넘어갈게요.', end: '끝! 다시 들으려면 재생을 눌러 주세요.', pic: '그림', voiceOf: '목소리',
+    nextStory: '다음 이야기로 넘어갈게요.', end: '끝! 다시 들으려면 재생을 눌러 주세요.', pic: '그림', voiceOf: '목소리', ageOf: '나이',
     hear: '들어보기', think: '생각해 볼까요?', cover: '표지', page: (a, b) => `${a} / ${b} 쪽`,
     tapHint: '재생을 누르거나, 듣고 싶은 문장을 눌러 주세요.', readFirst: '목소리를 준비하는 동안 먼저 읽어 보세요.',
     coverSub: (n) => (age === 'teen' ? `청소년 읽을거리 ${n}편 · 근대 소설 원문과 세계 명작을 목소리로` : `이야기 ${n}편을 인물마다 다른 목소리로 들려줘요`), resume: (t) => `▶ 이어 읽기 · ${t}`,
@@ -83,7 +102,7 @@ const UI = {
     prevLine: 'Previous sentence', nextLine: 'Next sentence', play: 'Play', pause: 'Pause', all: 'All',
     count: (n) => `${n}`, up: 'up', down: 'down', remove: 'remove', addOnce: 'add to playlist', addAgain: 'add again',
     clearAsk: 'Clear the playlist?', slow: 'Making the voice…', again: 'Let’s hear it again!',
-    nextStory: 'Next story!', end: 'The end! Press play to hear it again.', pic: 'picture', voiceOf: 'voice',
+    nextStory: 'Next story!', end: 'The end! Press play to hear it again.', pic: 'picture', voiceOf: 'voice', ageOf: 'age',
     hear: 'Listen', think: 'Let’s think!', cover: 'Cover', page: (a, b) => `Page ${a} / ${b}`,
     tapHint: 'Press play, or tap a sentence to hear it.', readFirst: 'Read first while the voice gets ready.',
     coverSub: (n) => `${n} stories in English`, resume: (t) => `▶ Keep reading · ${t}`,
@@ -253,7 +272,9 @@ function castOf(name) {
     const voice = VOICES.find((v) => !used.has(v)) || VOICES[Object.keys(story.cast).length % VOICES.length];
     story.cast[name] = { voice, speed: name === NARRATOR ? 0.95 : 1.0 };
   }
-  return story.cast[name];
+  const c = story.cast[name];
+  if (!AGES[c.age]) c.age = guessAge(name);
+  return c;
 }
 function buildSeq() {
   // 맨 앞은 제목(표지에서 해설이 읽음), 이어서 본문, 끝에 마무리 질문
@@ -273,7 +294,7 @@ function buildSeq() {
 function keyFor(i) {
   const { who, text } = seq[i];
   const c = castOf(who);
-  return `${storyKey()}|${i}|${c.voice}|${c.speed}|${el.steps.value}|${text}`;
+  return `${storyKey()}|${i}|${c.voice}|${c.speed}|${c.age}|${el.steps.value}|${text}`;
 }
 const storyKey = () => `${story.id}:${story.lang || 'ko'}`;
 
@@ -290,11 +311,11 @@ function cancelPending(from = -1) {
     else if (e.done && story && !k.startsWith(`${storyKey()}|`)) audioCache.delete(k);
   }
 }
-// 이야기 언어와 빠르기(영문 모드는 조금 천천히)
+// 이야기 언어와 빠르기(영문 모드는 조금 천천히). 재생 때 pitch 배로 빨라지므로 합성은 그만큼 천천히.
 function speechOf(c) {
-  return story.lang === 'en'
-    ? { lang: 'en', speed: c.speed * BASE_SPEED * EN_SPEED }
-    : { lang: 'ko', speed: c.speed * BASE_SPEED };
+  const a = ageOf(c);
+  const speed = c.speed * BASE_SPEED * a.speed / a.pitch;
+  return story.lang === 'en' ? { lang: 'en', speed: speed * EN_SPEED } : { lang: 'ko', speed };
 }
 function audioFor(i) {
   const k = keyFor(i);
@@ -339,14 +360,16 @@ function stopAudio() {
 }
 // tail: 소리 뒤에 붙일 쉼(ms). 타이머(setTimeout)로 기다리지 않고 소리 안에 무음으로 넣음 →
 // 화면이 꺼져 타이머가 느려져도(백그라운드에서 최대 1초 단위) 쉼 길이가 그대로 유지됨
-function playPCM(pcm, tail = 0) {
+// rate: 목소리 나이의 음 높이(재생 속도). 쉼은 rate 배 길게 넣어 실제 쉼 길이가 같게 함.
+function playPCM(pcm, tail = 0, rate = 1) {
   const ctx = ensureCtx();
-  const pad = Math.floor((tail / 1000) * tts.sampleRate);
+  const pad = Math.floor((tail / 1000) * tts.sampleRate * rate);
   const buf = ctx.createBuffer(1, pcm.length + pad, tts.sampleRate);
   buf.copyToChannel(pcm, 0);
   return new Promise((resolve) => {
     source = ctx.createBufferSource();
     source.buffer = buf;
+    source.playbackRate.value = rate;
     source.connect(ctx.destination);
     source.onended = () => { source = null; resolve(); };
     source.start();
@@ -504,7 +527,8 @@ async function run(from) {
     const waited = performance.now() - t0;
     if (waited > 50) console.info(`[player] ${idx + 1}번째 문장 대기 ${(waited / 1000).toFixed(2)}s (끊김)`);
     // 쉼: 질문 뒤 생각할 시간 / 시의 연이 바뀔 때는 조금 더
-    await playPCM(pcm, seq[idx].q ? THINK_MS : GAP_MS + (seq[idx + 1]?.stanza ? (story.prose ? PARA_MS : STANZA_MS) : 0));
+    await playPCM(pcm, seq[idx].q ? THINK_MS : GAP_MS + (seq[idx + 1]?.stanza ? (story.prose ? PARA_MS : STANZA_MS) : 0),
+      ageOf(castOf(seq[idx].who)).pitch);
     if (my !== runId) return;
     idx += 1;
   }
@@ -680,7 +704,8 @@ function renderLegend() {
   }));
 }
 function renderCast() {
-  el.castList.replaceChildren(...Object.entries(story.cast).map(([name, c]) => {
+  el.castList.replaceChildren(...Object.keys(story.cast).map((name) => {
+    const c = castOf(name);
     const chip = document.createElement('div');
     chip.className = 'chip';
     chip.style.setProperty('--c', colorOf(name) || 'var(--ink-soft)');
@@ -692,12 +717,21 @@ function renderCast() {
       if (v === c.voice) o.selected = true;
       sel.append(o);
     }
-    sel.onchange = () => {
-      c.voice = sel.value;
+    // 목소리 나이(아이·보통·어른·노인)
+    const ageSel = document.createElement('select');
+    ageSel.setAttribute('aria-label', `${nameOf(name)} ${t('ageOf')}`);
+    for (const a of Object.keys(AGES)) {
+      const o = document.createElement('option'); o.value = a; o.textContent = (isEn() ? AGE_LABEL_EN : AGE_LABEL)[a];
+      if (a === c.age) o.selected = true;
+      ageSel.append(o);
+    }
+    const changed = () => {
       if (story.user) saveUserStories();
       if (playing) run(idx);
       else { cancelPending(); warmup(idx); }
     };
+    sel.onchange = () => { c.voice = sel.value; changed(); };
+    ageSel.onchange = () => { c.age = ageSel.value; changed(); };
     const hear = document.createElement('button');
     hear.textContent = t('hear');
     hear.disabled = !ready;
@@ -708,11 +742,11 @@ function renderCast() {
       const line = story.lines.find(([w]) => w === name);
       const text = line ? line[1] : isEn() ? `Hello, I am ${nameOf(name)}.` : `안녕, 나는 ${name}이야.`;
       hear.disabled = true;
-      try { await playPCM(await tts.synth(text, { voice: c.voice, steps: Number(el.steps.value), ...speechOf(c) })); }
+      try { await playPCM(await tts.synth(text, { voice: c.voice, steps: Number(el.steps.value), ...speechOf(c) }), 0, ageOf(c).pitch); }
       catch (e) { console.error(e); el.engine.textContent = `음성을 만들지 못했어요: ${e.message}`; }
       finally { hear.disabled = false; }
     };
-    chip.append(n, sel, hear);
+    chip.append(n, sel, ageSel, hear);
     return chip;
   }));
 }

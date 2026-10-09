@@ -32,6 +32,7 @@ for (const s of list) {
   for (const [n, c] of Object.entries(cast)) {
     if (!VOICES.includes(c.voice)) E(`${n} voice 잘못됨`);
     if (!(c.speed >= 0.85 && c.speed <= 1.25)) E(`${n} speed 범위`);
+    if (c.age !== undefined && !['child', 'normal', 'adult', 'old'].includes(c.age)) E(`${n} age 잘못됨: ${c.age}`);
     if (/\s/.test(n) || [...n].length > 6) E(`인물 이름: ${n}`);
   }
   const lines = s.lines || [];
