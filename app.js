@@ -91,6 +91,8 @@ const UI = {
 const SRC_EN = {
   탈무드: 'Talmud', 이솝우화: 'Aesop’s Fables', '한국 전래동화': 'Korean Tales', '영국 민담': 'English Tales',
   '그림 형제': 'Brothers Grimm', 안데르센: 'Andersen', 페로: 'Perrault', '세계 민담': 'World Tales', 고사성어: 'Chinese Fables',
+  '명작 동화': 'Classic Tales', '명작 연재': 'Classic Series', '자연 관찰': 'Nature Notes', '우리 고전': 'Korean Classics',
+  '신화와 역사': 'Myths & History',
 };
 const VOICE_LABEL_EN = {
   F1: 'Woman 1', F2: 'Woman 2', F3: 'Woman 3', F4: 'Woman 4', F5: 'Woman 5',
