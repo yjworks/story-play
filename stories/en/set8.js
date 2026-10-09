@@ -286,7 +286,7 @@ export default {
 
   'cl-flanders-dog': {
     title: 'A Dog of Flanders',
-    names: { 해설: 'Narrator', 넬로: 'Nello', 할아버지: 'Grandpa', 아로아: 'Alois', 코게즈: 'Mr. Cogez' },
+    names: { 해설: 'Narrator', 넬로: 'Nello', 할아버지: 'Grandpa', 알루아: 'Alois', 코게즈: 'Mr. Cogez' },
     outro: [
       'Thank you for listening to the end.',
       'If you were Alois, what would you do for Nello?',
@@ -302,7 +302,7 @@ export default {
       ['해설', 'Every day, they pulled a milk cart to the big city.'],
       ['넬로', 'I want to be a painter. I want to see the big painting.'],
       ['해설', 'But you needed money to see the painting in the church.'],
-      ['아로아', 'Nello, thank you for drawing my picture!'],
+      ['알루아', 'Nello, thank you for drawing my picture!'],
       ['코게즈', 'Alois, do not play with that poor boy!'],
       ['해설', 'Nello drew a picture for a big contest.'],
       ['해설', 'But on Christmas Eve, another boy won.'],

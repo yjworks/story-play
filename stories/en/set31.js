@@ -214,7 +214,7 @@ export default {
   },
 
   'an2-clod-hans': {
-    title: 'Clumsy Hans',
+    title: 'Silly Hans',
     names: { 해설: 'Narrator', 한스: 'Hans', 첫째형: 'Big Brother', 둘째형: 'Middle Brother', 공주: 'Princess' },
     outro: [
       'Was the story fun?',
