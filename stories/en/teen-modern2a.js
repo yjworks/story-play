@@ -75,7 +75,7 @@ export default {
       ['해설', 'Finally he drops his strong mask and begins to defend himself.'],
       ['해설', 'He says he also wants to buy her silk clothes and a nice parasol.'],
       ['해설', 'He says he studies all day, even if it looks like he is doing nothing.'],
-      ['해설', 'He says he can bear it if the whole world laughs at him, but not if his wife stops trusting him.'],
+      ['해설', 'The whole world may laugh at him, he says, but he cannot bear losing his wife’s trust.'],
     ],
   },
 
@@ -103,7 +103,7 @@ export default {
       ['해설', 'Every other woman on the street wears silk. Only his wife looks shabby.'],
       ['해설', 'At the big house, strangers look at K as if he were a servant.'],
       ['해설', 'His wife’s older sister greets him warmly. She lives in Incheon.'],
-      ['해설', 'Her husband recently won a fortune by trading rice, and she is dressed in fine silk.'],
+      ['해설', 'Her husband recently won a fortune by betting on the rice market, and she is dressed in fine silk.'],
       ['해설', 'But under her face powder, K notices a dark bruise above her eye.'],
       ['해설', 'The two sisters have almost the same face, yet they look so different.'],
       ['해설', 'One is like a flower in full bloom. The other is like a dry fallen leaf.'],
@@ -153,12 +153,12 @@ export default {
       ['해설', 'Nobody else believes in this unknown writer. Only his wife does, deeply.'],
       ['해설', 'In his heart, K calls her his angel again and holds her tightly.'],
       ['해설', 'Tears fill both their eyes.'],
-      ['해설', 'Hyeon Jin-geon wrote this story partly from his own early life as a struggling writer.'],
+      ['해설', 'Many readers see this story as drawn from Hyeon Jin-geon’s own early years as a young writer.'],
     ],
   },
 
   'tm2-sul-1': {
-    title: 'A Society That Drives One to Drink, Part 1',
+    title: 'A Society Urging Drink, Part 1',
     names: { 해설: 'Narrator' },
     outro: [
       'In this part, where did a character’s feelings shake the most, and why do you think so?',
@@ -166,7 +166,7 @@ export default {
       'Using clues from this part, guess what will happen in the next part.',
     ],
     lines: [
-      ['해설', 'This is A Society That Drives One to Drink, a short story by Hyeon Jin-geon, published in 1921.'],
+      ['해설', 'This is A Society Urging Drink, a short story by Hyeon Jin-geon, published in 1921.'],
       ['해설', 'You will hear a short summary in English, not a translation of the original text.'],
       ['해설', 'Late at night, a wife is sewing alone. Suddenly, the needle pricks her thumb.'],
       ['해설', 'She tries to tie a cloth around it, but she cannot pick up the cloth.'],
@@ -196,7 +196,7 @@ export default {
   },
 
   'tm2-sul-2': {
-    title: 'A Society That Drives One to Drink, Part 2',
+    title: 'A Society Urging Drink, Part 2',
     names: { 해설: 'Narrator' },
     outro: [
       'In this part, where did a character’s feelings shake the most, and why do you think so?',
@@ -231,7 +231,7 @@ export default {
   },
 
   'tm2-sul-3': {
-    title: 'A Society That Drives One to Drink, Part 3',
+    title: 'A Society Urging Drink, Part 3',
     names: { 해설: 'Narrator' },
     outro: [
       'What kind of society did the husband mean by a society that drives one to drink?',
@@ -397,7 +397,7 @@ export default {
       ['해설', 'The man says his mother could not even have a sip of rice porridge before she died.'],
       ['해설', 'He stops speaking, and his eyes shine with tears.'],
       ['해설', 'The narrator does not know how to comfort him, so he opens a bottle of rice wine.'],
-      ['해설', 'After his parents died, the man worked in Sinuiju and Andong, and then in Japan.'],
+      ['해설', 'After his parents died, the man worked in Sinuiju and in Andong, China, and then in Japan.'],
       ['해설', 'He worked in a coal mine in Kyushu and an ironworks in Osaka.'],
       ['해설', 'He earned a little more, but he was lonely and could not save any money.'],
       ['해설', 'Missing his homeland, he came back to see his hometown before looking for work in Seoul.'],
