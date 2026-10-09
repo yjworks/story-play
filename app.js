@@ -126,7 +126,7 @@ const SRC_EN = {
   '신화와 역사': 'Myths & History', '세계 도시 탐방': 'World City Trips',
   '근대 소설': 'Korean Modern Fiction', '근대 수필': 'Korean Modern Essays', '고전 산문': 'Korean Classical Prose',
   '고전 수필': 'Korean Classical Essays', '수필·편지': 'Essays & Letters', '과학 고전': 'Science Classics',
-  '인문 고전': 'Humanities Classics', '삼국사기·삼국유사': 'Tales of the Three Kingdoms of Korea', '삼국지': 'Romance of the Three Kingdoms',
+  '인문 고전': 'Humanities Classics', '삼국사기·삼국유사': 'Samguk Sagi & Yusa', '삼국지': 'Romance of the Three Kingdoms',
   '초한지': 'The Chu–Han War', '조선왕조실록': 'Annals of the Joseon Dynasty', '세계 단편': 'World Short Stories',
   '세계 장편': 'World Novels', '셰익스피어': 'Shakespeare', '연설과 기록': 'Speeches & Records',
   '추리·괴기 명작': 'Mystery & Gothic Tales', '교양 강연': 'Talks',

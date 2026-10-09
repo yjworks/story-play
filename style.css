@@ -107,7 +107,11 @@ button { cursor: pointer; }
 .story-list .s-pic { grid-row: span 2; font-size: 1.7rem; line-height: 1; text-align: center; }
 .story-list .pick:hover { background: var(--sheet); }
 .story-list .pick[aria-current="true"] { background: var(--sheet); box-shadow: inset 4px 0 0 var(--lamp); }
-.story-list .s-title { font-family: var(--font-title); font-size: 1.1rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.story-list .s-title {
+  font-family: var(--font-title); font-size: 1.1rem; line-height: 1.3; min-width: 0; overflow-wrap: anywhere;
+  /* 긴 제목(영어 등)은 두 줄까지 보이고, 넘치면 말줄임 */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
 .story-list .pick > span:not(.s-pic) { min-width: 0; }
 .story-list .s-src { font-size: 0.78rem; color: var(--ink-soft); }
 .story-list .add {
@@ -230,11 +234,12 @@ button { cursor: pointer; }
 .voices summary { cursor: pointer; color: var(--ink-soft); font-size: 0.88rem; padding: 2px 4px; width: max-content; margin: 0 auto; }
 .cast-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding-top: 8px; }
 .chip {
-  display: flex; align-items: center; gap: 8px; padding: 5px 8px 5px 14px;
-  border-radius: 999px; background: var(--sheet); border: 2px solid var(--c);
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 8px; padding: 5px 8px 5px 14px;
+  max-width: 100%; border-radius: 22px; background: var(--sheet); border: 2px solid var(--c);
 }
+.chip strong { overflow-wrap: anywhere; }
 .chip strong { font-family: var(--font-title); font-weight: 400; color: var(--c); }
-.chip select { border: 0; background: var(--paper); border-radius: 999px; padding: 2px 6px; }
+.chip select { border: 0; background: var(--paper); border-radius: 999px; padding: 2px 6px; min-width: 0; max-width: 100%; }
 .chip button { border: 0; background: none; padding: 2px 6px; color: var(--ink-soft); }
 
 /* ---------- 재생바 ---------- */
@@ -286,11 +291,13 @@ button { cursor: pointer; }
 
 /* 앱 표지 (이야기 극장) */
 .cover {
-  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px;
+  position: fixed; inset: 0; z-index: 60; display: flex; justify-content: center; align-items: flex-start; padding: 16px;
   background: var(--paper); perspective: 2000px;
+  overflow-y: auto; overscroll-behavior: contain; /* 화면보다 표지가 길면(가로 화면 등) 스크롤 */
 }
 .cover-book {
-  width: min(560px, 92vw); min-height: min(720px, 86vh); padding: clamp(24px, 5vw, 48px);
+  margin: auto 0; /* 화면에 들어가면 세로 가운데, 넘치면 위에서부터 */
+  width: min(560px, 100%); min-height: min(720px, 86vh); padding: clamp(24px, 5vw, 48px);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center;
   color: #fffdf8; border-radius: 8px 22px 22px 8px;
   background: linear-gradient(135deg, #e7a72e, #c9851a);
@@ -383,3 +390,16 @@ button { cursor: pointer; }
 .story-list ul.eps { list-style: none; margin: 2px 0 6px 18px; padding: 0; flex-basis: 100%; }
 .story-list ul.eps li { margin: 0; }
 .story-list ul.eps .s-title { font-size: 0.95em; }
+
+/* ---------- 키가 낮은 화면(휴대폰 가로 등): 그림·제목·여백을 줄여 본문과 재생바가 겹치지 않게 ---------- */
+@media (max-height: 520px) {
+  .top { padding-top: 6px; }
+  .scene { max-height: 30vh; }
+  .page.cover-page .scene { max-height: 34vh; }
+  .page.cover-page .title { font-size: clamp(1.8rem, 5vh + 1rem, 2.6rem); }
+  .page.cover-page .page-head { gap: 8px; }
+  .cover-book { min-height: 0; gap: 10px; padding: 20px; }
+  .cover-title { font-size: clamp(2.2rem, 10vh, 3.4rem); }
+  .transport { padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .tbtn.play { width: 44px; height: 44px; }
+}
