@@ -148,7 +148,7 @@ export default {
     outro: [
       'What did you think of the story?',
       'If you were Elisha, would you help the family or keep going?',
-      'Did you ever stop what you wanted to help a friend?',
+      'Did you ever stop your plans to help a friend?',
     ],
     lines: [
       ['해설', 'Long ago, two old friends lived in a village.'],
