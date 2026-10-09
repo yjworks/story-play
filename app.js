@@ -331,8 +331,8 @@ function speechOf(c) {
   const speed = c.speed * BASE_SPEED * a.speed / a.pitch;
   return story.lang === 'en' ? { lang: 'en', speed: speed * (story.age === 'teen' ? EN_SPEED_TEEN : EN_SPEED) } : { lang: 'ko', speed };
 }
-// 낭독용 표기: 검열로 지운 자리(××, ○○)는 옛 관례대로 '모모'로 읽음
-const speakText = (t) => t.replace(/[×○]{2,}/g, '모모').replace(/[×○]/g, '모');
+// 낭독용 표기: 검열로 지운 자리(××, ○○)는 옛 관례대로 '모모'로 읽고, 책 제목 괄호(「」『』《》〈〉)는 소리 내지 않음
+const speakText = (t) => t.replace(/[×○]{2,}/g, '모모').replace(/[×○]/g, '모').replace(/[「」『』《》〈〉]/g, '');
 function audioFor(i) {
   const k = keyFor(i);
   if (!audioCache.has(k)) {
