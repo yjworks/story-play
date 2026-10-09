@@ -12,7 +12,7 @@ export const KO_FILES = [
 // 영어 원고(영문 모드). 키 = 이야기 id.
 export const EN_FILES = [
   // 청소년 영어 원고
-  'en/teen-a.js', 'en/teen-e.js', 'en/teen-lesmis.js', 'en/teen-80days.js', 'en/teen-c.js', 'en/teen-d.js', 'en/teen-nautilus.js', 'en/teen-pride.js', 'en/teen-b.js', 'en/teen-f.js', 'en/teen-twocities.js', 'en/teen-eyre.js', 'en/teen-g.js', 'en/teen-h.js', 'en/teen-quixote.js', 'en/teen-monte.js',
+  'en/teen-a.js', 'en/teen-e.js', 'en/teen-lesmis.js', 'en/teen-80days.js', 'en/teen-c.js', 'en/teen-d.js', 'en/teen-nautilus.js', 'en/teen-pride.js', 'en/teen-b.js', 'en/teen-f.js', 'en/teen-twocities.js', 'en/teen-eyre.js', 'en/teen-g.js', 'en/teen-h.js', 'en/teen-quixote.js', 'en/teen-monte.js', 'en/teen-frank.js', 'en/teen-expect.js',
   'en/set1.js', 'en/set2.js', 'en/set3.js', 'en/set4.js', 'en/set5.js', 'en/set6.js', 'en/set7.js',
   'en/set8.js', 'en/set9.js', 'en/set10.js', 'en/set11.js', 'en/set12.js', 'en/set13.js', 'en/set14.js', 'en/set15.js', 'en/set16.js', 'en/set17.js', 'en/set18.js', 'en/set19.js', 'en/set20.js', 'en/set21.js', 'en/set22.js', 'en/set23.js', 'en/set24.js', 'en/set34.js', 'en/set25.js', 'en/set26.js', 'en/set27.js', 'en/set28.js', 'en/set29.js', 'en/set30.js', 'en/set31.js', 'en/set32.js', 'en/set33.js',
 ];
