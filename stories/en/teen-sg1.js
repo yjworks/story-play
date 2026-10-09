@@ -79,7 +79,7 @@ export default {
       ['해설', 'Back home, Cao Cao raised an army and sent out a call. Many lords gathered, with Yuan Shao as their leader.'],
       ['원소', 'Dong Zhuo’s general Hua Xiong has beaten our generals one after another. Who will face him?'],
       ['관우', 'I will go out and defeat Hua Xiong.'],
-      ['해설', 'Yuan Shao laughed at him as a mere archer. But Cao Cao poured a cup of warm wine and handed it to Guan Yu.'],
+      ['해설', 'Yuan Shu laughed at him as a mere archer. But Cao Cao poured a cup of warm wine and handed it to Guan Yu.'],
       ['관우', 'Please set the wine down for now. I will drink it when I return.'],
       ['해설', 'Before the drums had even died down, Guan Yu came back. The wine Cao Cao poured was still warm.'],
       ['해설', 'Cornered, Dong Zhuo burned Luoyang and dragged the emperor west to Chang’an. There, a new plan began to grow.'],
