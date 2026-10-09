@@ -144,7 +144,7 @@ export default {
     ],
     lines: [
       ['해설', 'Long ago, Tortoise had a smooth, shiny shell.'],
-      ['해설', 'One day, the birds were asked to a party in the sky.'],
+      ['해설', 'One day, the birds were invited to a party in the sky.'],
       ['앵무새', 'There is a big party in the sky! Tweet!'],
       ['거북', 'I want to go! Can I have some feathers?'],
       ['해설', 'Each bird gave him one feather. Now he had wings!'],

@@ -60,7 +60,7 @@ export default {
       ['안내인', 'At Midsummer in late June, people light big bonfires.'],
       ['아이노', 'On Independence Day, we put two candles in the window.'],
       ['안내인', 'People ride green trams, the metro, and ferries.'],
-      ['아이노', 'Some libraries even lend sewing machines and instruments!'],
+      ['아이노', 'Some libraries even lend musical instruments!'],
       ['안내인', 'Students in Finland get free school lunches.'],
       ['안내인', 'Anyone may walk in the forest and pick berries.'],
       ['아이노', 'In winter, we wear reflectors so drivers can see us.'],

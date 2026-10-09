@@ -148,7 +148,7 @@ export default {
       'Have you ever missed something because you were busy?',
     ],
     lines: [
-      ['해설', 'Long ago in Italy, an old woman named Befana lived.'],
+      ['해설', 'Long ago in Italy, there lived an old woman named Befana.'],
       ['해설', 'Every day, she swept her house with a broom.'],
       ['베파나', 'Swish, swish! My house must be the cleanest!'],
       ['해설', 'One winter night, a bright star shone in the sky.'],
@@ -301,7 +301,7 @@ export default {
       ['해설', 'At home, she opened it. Gold coins!'],
       ['해설', 'A greedy neighbor heard and went up the mountain.'],
       ['막내달', 'Which month do you like best?'],
-      ['이웃', 'I like none! Winter is cold. Summer is hot. Rain is bad.'],
+      ['이웃', 'I like none of you! Winter is cold. Summer is hot.'],
       ['첫째달', 'I see. Take this basket.'],
       ['해설', 'The neighbor ran home and opened it.'],
       ['해설', 'Inside, there were only frogs. Ribbit, ribbit!'],
@@ -317,7 +317,7 @@ export default {
     names: { 해설: 'Narrator', 올빼미: 'Owl', 까마귀: 'Raven' },
     outro: [
       'Was the story fun?',
-      'If you were Owl, what would you say to Raven?',
+      'If you were Raven, what would you say to Owl?',
       'How do you wait when a friend makes something for you?',
     ],
     lines: [
@@ -420,7 +420,8 @@ export default {
       'When did you give up something you liked for others?',
     ],
     lines: [
-      ['해설', 'Long ago in New Zealand, Tane was the god of the forest.'],
+      ['해설', 'Long ago in New Zealand, Tane was the forest god.'],
+      ['해설', 'The Maori people tell stories about him.'],
       ['해설', 'One day, Tane saw that the trees were sick.'],
       ['타네', 'Oh no! Bugs are eating the tree roots.'],
       ['해설', 'Tane called all the birds of the sky.'],
@@ -522,9 +523,9 @@ export default {
     ],
     lines: [
       ['해설', 'Long ago in Turkey, there lived a funny man named Nasreddin.'],
-      ['해설', 'One day, he was asked to a big party.'],
+      ['해설', 'One day, he was invited to a big party.'],
       ['해설', 'He came from the field in old, dirty clothes.'],
-      ['나스레딘', 'Hello! Thank you for asking me!'],
+      ['나스레딘', 'Hello! Thank you for inviting me!'],
       ['하인', 'Um, sit over there in the corner.'],
       ['해설', 'No one gave him any food.'],
       ['나스레딘', 'Hmm. It must be my clothes.'],
@@ -591,11 +592,11 @@ export default {
     lines: [
       ['해설', 'Long ago in the desert, a father had seventeen camels.'],
       ['해설', 'He gave them to his three sons.'],
-      ['해설', 'The oldest gets one half. The middle son gets one third.'],
-      ['해설', 'The youngest gets one ninth.'],
+      ['해설', 'The oldest would get one half. The middle son would get one third.'],
+      ['해설', 'The youngest would get one ninth.'],
       ['첫째', 'Half of seventeen is eight and a half. We cannot cut a camel!'],
       ['둘째', 'One third does not work, either!'],
-      ['막내', 'One ninth does not work, too. What can we do?'],
+      ['막내', 'One ninth does not work. What can we do?'],
       ['해설', 'The brothers started to fight.'],
       ['첫째', 'I am the oldest. I should get more!'],
       ['둘째', 'No! That is not fair!'],

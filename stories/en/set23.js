@@ -92,7 +92,7 @@ export default {
       ['레나', 'Mozart and Beethoven lived and made music here!'],
       ['안내인', 'In 1918, the empire ended. Austria became a republic.'],
       ['해설', 'Then they visited three famous places.'],
-      ['레나', 'First, Schonbrunn Palace! The royal family spent summers here.'],
+      ['레나', 'First, Schonbrunn Palace! The emperor’s family spent summers here.'],
       ['안내인', 'It has a big garden. It is a World Heritage Site.'],
       ['레나', 'Second, St. Stephen’s Cathedral. Its roof has colorful tiles.'],
       ['안내인', 'Third, the giant Ferris wheel. It was built in 1897.'],
@@ -246,7 +246,7 @@ export default {
     ],
     lines: [
       ['해설', 'Last time, Hana learned about the history of Venice.'],
-      ['해설', 'Today, she went to a small place by a canal.'],
+      ['해설', 'Today, she went to a small restaurant by a canal.'],
       ['줄리아', 'These are cicchetti. They are small bites of food.'],
       ['안내인', 'Many are bread with fish or vegetables on top.'],
       ['줄리아', 'This is sarde in saor. Fried sardines with onions and vinegar.'],
