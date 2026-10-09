@@ -1225,6 +1225,7 @@ $('langBtn').onclick = () => setLang(isEn() ? 'ko' : 'en');
 $('coverLang').onclick = () => setLang(isEn() ? 'ko' : 'en');
 for (const b of document.querySelectorAll('.age-tabs button')) b.onclick = () => setAge(b.dataset.age);
 renderLang();
+$('homeBtn').onclick = showCover;
 $('homeTitle').onclick = showCover;
 $('homeTitle').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showCover(); } };
 // 엔진 상태를 표지에도 보여 줌

@@ -42,6 +42,10 @@ button { cursor: pointer; }
   margin: 0 0 0 auto; flex: 1; min-width: 0; font-size: 0.85rem; color: var(--ink-soft); text-align: right;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.home-btn {
+  flex: none; width: 40px; height: 40px; border: 1.5px solid var(--line); background: var(--sheet);
+  border-radius: 50%; font-size: 1.15rem; line-height: 1; padding: 0; cursor: pointer;
+}
 .shelf-btn {
   display: none; border: 1.5px solid var(--line); background: var(--sheet); border-radius: 999px;
   padding: 6px 14px; font-family: var(--font-title); font-size: 1.05rem; white-space: nowrap;
