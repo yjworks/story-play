@@ -235,6 +235,8 @@ function t(k, ...args) {
   const v = UI[lang][k] ?? UI.ko[k];
   return typeof v === 'function' ? v(...args) : v;
 }
+// 영문 모드에서는 한글로 적힌 작가 이름을 숨김(영어 원고 본문에 작가가 영어로 소개됨)
+const authorOf = (s) => (s.author && !(isEn() && /[가-힣]/.test(s.author)) ? s.author : '');
 const srcLabel = (src) => (isEn() ? SRC_EN[src] || src : src);
 // 정적 화면 글자: data-i18n(글자), data-i18n-aria(aria-label), data-i18n-title(title)
 function applyUI() {
@@ -622,7 +624,7 @@ function storyRow(s, label) {
   const ttl = document.createElement('span'); ttl.className = 's-title'; ttl.textContent = label || s.title;
   const src = document.createElement('span'); src.className = 's-src';
   // 연재의 한 화(label 있음)는 모음·작가를 되풀이하지 않고 길이만
-  src.textContent = label ? t('minutes', minutesOf(s)) : `${srcLabel(s.source)}${s.author ? ` · ${s.author}` : ''} · ${t('minutes', minutesOf(s))}`;
+  src.textContent = label ? t('minutes', minutesOf(s)) : `${srcLabel(s.source)}${authorOf(s) ? ` · ${authorOf(s)}` : ''} · ${t('minutes', minutesOf(s))}`;
   b.append(pic, ttl, src);
   b.onclick = () => { selectStory(s.id); closeShelf(); };
   const add = document.createElement('button');
@@ -649,7 +651,7 @@ function seriesRow(g) {
   const ttl = document.createElement('span'); ttl.className = 's-title'; ttl.textContent = `${isOpen ? '▾' : '▸'} ${seriesTitle(first)}`;
   const total = g.eps.reduce((a, e) => a + minutesOf(e), 0);
   const src = document.createElement('span'); src.className = 's-src';
-  src.textContent = `${srcLabel(first.source)}${first.author ? ` · ${first.author}` : ''} · ${t('episodes', g.eps.length)} · ${t('minutes', total)}`;
+  src.textContent = `${srcLabel(first.source)}${authorOf(first) ? ` · ${authorOf(first)}` : ''} · ${t('episodes', g.eps.length)} · ${t('minutes', total)}`;
   b.append(pic, ttl, src);
   b.onclick = () => {
     if (openSeries.has(g.sr)) openSeries.delete(g.sr); else openSeries.add(g.sr);
@@ -1070,7 +1072,7 @@ function showStory(full, pos) {
   seq = buildSeq();
   idx = 0;
   el.storyTitle.textContent = story.title;
-  el.storySource.textContent = story.author ? `${srcLabel(story.source)} · ${story.author}` : srcLabel(story.source);
+  el.storySource.textContent = authorOf(story) ? `${srcLabel(story.source)} · ${authorOf(story)}` : srcLabel(story.source);
   el.page.style.setProperty('--cv', COVER_COLORS[Math.max(0, sources().indexOf(story.source)) % COVER_COLORS.length]);
   renderFilter();
   renderStoryList();
