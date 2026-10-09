@@ -61,7 +61,7 @@ const UI = {
     nextStory: '다음 이야기로 넘어갈게요.', end: '끝! 다시 들으려면 재생을 눌러 주세요.', pic: '그림', voiceOf: '목소리',
     hear: '들어보기', think: '생각해 볼까요?', cover: '표지', page: (a, b) => `${a} / ${b} 쪽`,
     tapHint: '재생을 누르거나, 듣고 싶은 문장을 눌러 주세요.', readFirst: '목소리를 준비하는 동안 먼저 읽어 보세요.',
-    coverSub: (n) => `옛이야기 ${n}편을 인물마다 다른 목소리로 들려줘요`, resume: (t) => `▶ 이어 읽기 · ${t}`,
+    coverSub: (n) => `이야기 ${n}편을 인물마다 다른 목소리로 들려줘요`, resume: (t) => `▶ 이어 읽기 · ${t}`,
     ready: (b, s) => `준비 완료 (${b} · ${s})`, synthFail: (m) => `음성을 만들지 못했어요: ${m}`,
     loadFail: '음성 엔진을 불러오지 못했어요 (모델 파일을 받지 못함)', loadFailMsg: (m) => `음성 엔진을 불러오지 못했어요: ${m}`,
     cast: '등장인물', pages: '쪽 넘기기', controls: '재생 조작', loading: '음성 엔진 불러오는 중',
