@@ -18,6 +18,7 @@ import nature from './stories/nature.js';
 import yun from './stories/yun.js';
 import teenModern from './stories/teen-modern.js';
 import teenA from './stories/teen-a.js';
+import teenB from './stories/teen-b.js';
 import enSet1 from './stories/en/set1.js';
 import enSet2 from './stories/en/set2.js';
 import enSet3 from './stories/en/set3.js';
@@ -35,7 +36,7 @@ export const STORIES = [
   ...talmud, ...aesop, ...korean, ...english, ...grimm, ...andersen, ...perrault, ...world, ...gosa,
   ...classics, ...serialA, ...serialB, ...gojeon, ...history, ...nature, ...yun,
   // 청소년(age: 'teen')
-  ...teenModern, ...teenA,
+  ...teenModern, ...teenA, ...teenB,
 ];
 
 // 영어 원고(영문 모드). 키 = 이야기 id. 형식은 stories/en/*.js 참고.
