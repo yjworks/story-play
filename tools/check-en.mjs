@@ -4,9 +4,14 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { STORIES } from '../stories.js';
 
+// --ko 파일: 아직 stories/files.js 에 넣지 않은 새 한국어 파일도 기준으로 씀(예: --ko stories/aesop2.js)
+const args = process.argv.slice(2);
+const extraKo = [];
+for (let i = args.indexOf('--ko'); i >= 0; i = args.indexOf('--ko')) { extraKo.push(args[i + 1]); args.splice(i, 2); }
 const ko = Object.fromEntries(STORIES.map((s) => [s.id, s]));
-const files = process.argv.slice(2).length
-  ? process.argv.slice(2)
+for (const f of extraKo) for (const s of (await import(pathToFileURL(path.resolve(f)).href)).default) ko[s.id] = s;
+const files = args.length
+  ? args
   : readdirSync('stories/en').filter((f) => f.endsWith('.js')).map((f) => `stories/en/${f}`);
 const seen = new Map();
 const errs = [];
@@ -38,6 +43,6 @@ for (const f of files) {
     }
   }
 }
-console.log(`영어 원고 ${count}편 / 한국어 ${STORIES.length}편`);
+console.log(`영어 원고 ${count}편 / 한국어 ${Object.keys(ko).length}편`);
 if (errs.length) { console.log(errs.join('\n')); process.exit(1); }
 console.log('통과');

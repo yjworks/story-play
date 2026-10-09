@@ -62,6 +62,19 @@ for (const s of list) {
   if (tags > 3) E(`표현 태그 ${tags}개 (최대 3)`);
   for (const q of s.outro || []) if (!/[.!?]$/.test(q)) E(`outro 끝 문장부호: ${q}`);
 }
+// 디즈니판·영화판에만 있는 이름(원작에 없음) — 쓰면 안 됨
+const BANNED = ['에리얼', '엘사', '올라프', '지미니', '플린 라이더', '우르술라', '플라운더', '루이 왕', 'Ariel', 'Elsa', 'Olaf', 'Jiminy', 'Ursula', 'Flounder'];
+for (const s of list) {
+  const text = [s.title, ...(s.lines || []).map((l) => l[1]), ...(s.outro || []), ...Object.keys(s.cast || {})].join(' ');
+  for (const w of BANNED) if (text.includes(w)) errs.push(`[${s.id}] 쓰면 안 되는 이름(디즈니·영화판): ${w}`);
+}
+// 같은 독자층(어린이/청소년) 안에서 제목이 같은 이야기 → 중복 의심
+const seenTitle = new Map();
+for (const s of list) {
+  const k = `${s.age || 'kid'}|${s.title.replace(/\s+/g, '')}`;
+  if (seenTitle.has(k)) warn.push(`[${s.id}] 제목이 [${seenTitle.get(k)}]와 같음 — 중복인지 확인`);
+  else seenTitle.set(k, s.id);
+}
 const bySrc = {};
 for (const s of list) bySrc[s.source] = (bySrc[s.source] || 0) + 1;
 console.log(`이야기 ${list.length}편`, bySrc);
