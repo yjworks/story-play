@@ -210,7 +210,7 @@ export default [
     source: '연설과 기록',
     author: '수전 B. 앤서니',
     emoji: '⚖️',
-    title: '여성은 사람인가',
+    title: '앤서니의 재판',
     scene: { bg: 'house', items: ['⚖️', '🗳️', '📜', '💵'] },
     outro: [
       '앤서니는 왜 자신을 범죄자가 아니라 권리를 행사한 시민이라고 주장했을까?',
