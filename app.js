@@ -42,6 +42,7 @@ const LOOKAHEAD = 4; // 이야기를 고르면 첫 문장 + LOOKAHEAD 문장을 
 const NARRATION_PER_PARA = 3; // 해설 문장을 한 문단에 몇 개까지 이어 붙일지
 const GAP_MS = 500; // 문장 사이 쉼
 const THINK_MS = 7000; // 질문 뒤 아이가 생각할 시간
+const STANZA_MS = 600; // 시에서 연이 바뀔 때 더 쉬는 시간
 const NEXT_STORY_MS = 1500; // 반복·이어 듣기에서 다음 이야기 전 쉼
 const DEFAULT_OUTRO = ['이야기 잘 들었나요?', '이야기에서 가장 기억에 남는 장면은 무엇인가요? 왜 그런가요?'];
 const DEFAULT_OUTRO_EN = ['Did you like the story?', 'What part did you like best?'];
@@ -92,7 +93,7 @@ const SRC_EN = {
   탈무드: 'Talmud', 이솝우화: 'Aesop’s Fables', '한국 전래동화': 'Korean Tales', '영국 민담': 'English Tales',
   '그림 형제': 'Brothers Grimm', 안데르센: 'Andersen', 페로: 'Perrault', '세계 민담': 'World Tales', 고사성어: 'Chinese Fables',
   '명작 동화': 'Classic Tales', '명작 연재': 'Classic Series', '자연 관찰': 'Nature Notes', '우리 고전': 'Korean Classics',
-  '신화와 역사': 'Myths & History',
+  '신화와 역사': 'Myths & History', '윤동주 동시': 'Yun Dong-ju Poems',
 };
 const VOICE_LABEL_EN = {
   F1: 'Woman 1', F2: 'Woman 2', F3: 'Woman 3', F4: 'Woman 4', F5: 'Woman 5',
@@ -221,7 +222,14 @@ function castOf(name) {
 function buildSeq() {
   // 맨 앞은 제목(표지에서 해설이 읽음), 이어서 본문, 끝에 마무리 질문
   const title = { who: NARRATOR, text: story.title, ask: false, q: false, title: true };
-  const body = story.lines.map(([who, text]) => ({ who, text, ask: false, q: false }));
+  // 시(poem): 빈 줄('')은 연 구분 → 읽지 않고, 다음 행에 stanza 표시(화면에서 띄우고 읽을 때 조금 더 쉼)
+  const body = [];
+  let stanza = false;
+  for (const [who, text] of story.lines) {
+    if (!text) { stanza = true; continue; }
+    body.push({ who, text, ask: false, q: false, stanza });
+    stanza = false;
+  }
   const outro = (story.outro?.length ? story.outro : isEn() ? DEFAULT_OUTRO_EN : DEFAULT_OUTRO)
     .map((text, k) => ({ who: NARRATOR, text, ask: true, q: k > 0 }));
   return [title, ...body, ...outro];
@@ -453,7 +461,8 @@ async function run(from) {
     if (my !== runId) return;
     const waited = performance.now() - t0;
     if (waited > 50) console.info(`[player] ${idx + 1}번째 문장 대기 ${(waited / 1000).toFixed(2)}s (끊김)`);
-    await playPCM(pcm, seq[idx].q ? THINK_MS : GAP_MS);
+    // 쉼: 질문 뒤 생각할 시간 / 시의 연이 바뀔 때는 조금 더
+    await playPCM(pcm, seq[idx].q ? THINK_MS : GAP_MS + (seq[idx + 1]?.stanza ? STANZA_MS : 0));
     if (my !== runId) return;
     idx += 1;
   }
@@ -599,7 +608,7 @@ function renderBook() {
   let para = null;
   let count = 0;
   let askBox = null;
-  seq.forEach(({ who, text, ask, q, title }, i) => {
+  seq.forEach(({ who, text, ask, q, title, stanza }, i) => {
     castOf(who);
     if (title) {
       el.storyTitle.classList.add('sent');
@@ -622,6 +631,19 @@ function renderBook() {
       }
       s.textContent = shown(text);
       askBox.append(s);
+      return;
+    }
+    // 시: 한 연 = 한 문단, 행마다 줄바꿈. 표기는 원문 그대로.
+    if (story.poem) {
+      if (!para || stanza) {
+        para = document.createElement('p');
+        para.className = 'verse';
+        units.push({ node: para, first: i, ask: false });
+      } else {
+        para.append(document.createElement('br'));
+      }
+      s.textContent = shown(text);
+      para.append(s);
       return;
     }
     const talk = who !== NARRATOR;

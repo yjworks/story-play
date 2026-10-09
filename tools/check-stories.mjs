@@ -35,6 +35,13 @@ for (const s of list) {
     if (/\s/.test(n) || [...n].length > 6) E(`인물 이름: ${n}`);
   }
   const lines = s.lines || [];
+  // 시(poem: true): 원문 그대로라 줄 수·문장부호·길이 규칙은 적용하지 않음. 빈 줄('')은 연 구분.
+  if (s.poem) {
+    if (lines.filter((l) => l[1]).length < 4) E('시 행이 너무 적음');
+    if (!lines[0]?.[1] || !lines.at(-1)?.[1]) E('시의 처음·끝에 빈 줄');
+    for (const q of s.outro || []) if (!/[.!?]$/.test(q)) E(`outro 끝 문장부호: ${q}`);
+    continue;
+  }
   if (lines.length < 24 || lines.length > 32) E(`줄 수 ${lines.length} (24~32)`);
   const who = new Set(lines.map((l) => l[0]));
   for (const w of who) if (!cast[w]) E(`cast에 없는 인물: ${w}`);

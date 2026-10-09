@@ -187,6 +187,8 @@ button { cursor: pointer; }
 @keyframes turn { from { opacity: 0; transform: translateX(12px); } }
 .book p { margin: 0 0 0.7em; }
 .book p.talk { padding-left: 0.6em; }
+/* 시: 가운데 정렬, 행 간격 넉넉히, 연 사이 띄움 */
+.book p.verse { text-align: center; line-height: 1.9; margin: 0 0 1.2em; }
 .sent {
   cursor: pointer; border-radius: 8px; padding: 2px 3px;
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
