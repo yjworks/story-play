@@ -69,6 +69,8 @@ const UI = {
     ready: (b, s) => `준비 완료 (${b} · ${s})`, synthFail: (m) => `음성을 만들지 못했어요: ${m}`,
     loadFail: '음성 엔진을 불러오지 못했어요 (모델 파일을 받지 못함)', loadFailMsg: (m) => `음성 엔진을 불러오지 못했어요: ${m}`,
     cast: '등장인물', pages: '쪽 넘기기', controls: '재생 조작', loading: '음성 엔진 불러오는 중',
+    minutes: (m) => `약 ${m}분`, episodes: (n) => `${n}화`, epLabel: (n) => `${n}화`, addSeries: '연재 전체를 재생목록에 담기',
+    search: '제목·작가로 찾기', nextEp: '다음 화로 넘어갈게요.',
     repeatTitle: '반복 안 함: 재생목록을 끝까지 한 번 · 한 편 반복: 지금 이야기만 계속 · 목록 반복: 재생목록을 처음부터 다시',
   },
   en: {
@@ -88,6 +90,8 @@ const UI = {
     ready: (b) => `Ready (${b})`, synthFail: (m) => `Could not make the voice: ${m}`,
     loadFail: 'Could not load the voice engine (model files)', loadFailMsg: (m) => `Could not load the voice engine: ${m}`,
     cast: 'Characters', pages: 'Turn pages', controls: 'Player controls', loading: 'Loading the voice engine…',
+    minutes: (m) => `about ${m} min`, episodes: (n) => `${n} parts`, epLabel: (n) => `Part ${n}`, addSeries: 'add all parts to playlist',
+    search: 'Search by title', nextEp: 'On to the next part!',
     repeatTitle: 'No repeat: play the list once · Repeat one: this story again and again · Repeat list: start the list again',
   },
 };
@@ -204,6 +208,7 @@ function applyUI() {
   for (const n of document.querySelectorAll('[data-i18n]')) n.textContent = t(n.dataset.i18n);
   for (const n of document.querySelectorAll('[data-i18n-aria]')) n.setAttribute('aria-label', t(n.dataset.i18nAria));
   for (const n of document.querySelectorAll('[data-i18n-title]')) n.title = t(n.dataset.i18nTitle);
+  for (const n of document.querySelectorAll('[data-i18n-ph]')) n.placeholder = t(n.dataset.i18nPh);
   for (const n of document.querySelectorAll('[data-lang]')) n.hidden = n.dataset.lang !== lang;
   document.title = t('app');
 }
@@ -356,7 +361,12 @@ function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
 function nextStep() {
   const mode = el.repeat.value;
   if (mode === 'one') return { id: story.id, pos: plPos };
-  if (plPos < 0 || playlist[plPos] !== story.id) return null;
+  if (plPos < 0 || playlist[plPos] !== story.id) {
+    // 재생목록 밖에서 연재를 듣는 중이면 다음 화로 이어 감
+    const meta = stories.find((s) => s.id === story.id);
+    const nx = meta?.sr && stories.find((s) => s.sr === meta.sr && s.ep === meta.ep + 1);
+    return nx ? { id: nx.id, pos: -1, nextEp: true } : null;
+  }
   if (plPos + 1 < playlist.length) return { id: playlist[plPos + 1], pos: plPos + 1 };
   if (mode === 'list' && playlist.length) return { id: playlist[0], pos: 0 };
   return null;
@@ -431,6 +441,8 @@ $('plAddShown').onclick = () => {
   renderStoryList();
 };
 
+// 이야기 찾기: 입력하는 대로 목록을 거름(연재도 화 단위로 보여 줌)
+$('storySearch').addEventListener('input', (e) => { query = e.target.value; renderStoryList(); });
 /* ---------- 모음 태그 (전체 / 탈무드 / 이솝우화 …) ---------- */
 // 태그는 stories.js 의 source 값에서 자동으로 만듦 → 새 모음을 추가해도 코드 수정 없음
 function loadFilter() {
@@ -501,7 +513,7 @@ async function run(from) {
   if (idx >= seq.length) {
     const nx = nextStep();
     if (nx) {
-      el.hint.textContent = nx.id === story.id ? t('again') : t('nextStory');
+      el.hint.textContent = nx.id === story.id ? t('again') : nx.nextEp ? t('nextEp') : t('nextStory');
       await wait(NEXT_STORY_MS);
       if (my !== runId) return;
       if (await selectStory(nx.id, nx.pos)) run(0);
@@ -528,28 +540,103 @@ function jump(i) {
 }
 
 /* ---------- 렌더링 ---------- */
+// 이야기 길이(분, 대략): 읽는 글자 수와 줄 사이 쉼, 마무리 질문 뒤 생각할 시간으로 어림
+function minutesOf(s) {
+  const e = s.lang === 'en' && s.en;
+  const sec = e ? e.w / 2 + e.l * 0.4 : (s.n || 0) / 6.5 + (s.l || 0) * 0.4;
+  return Math.max(1, Math.round((sec + 14) / 60));
+}
+// 연재 묶음 이름: 한국어는 '삼국지|삼국지' 의 뒤쪽, 영문 모드는 'Pinocchio, Part 1' 에서 번호를 뗌
+function seriesTitle(first) {
+  if (first.lang === 'en') return first.title.replace(/,?\s*(Part|Episode|Lecture|Chapter)\s*\d+$/i, '').trim();
+  return first.sr.split('|')[1];
+}
+// 목록 항목: 검색어가 있으면 찾은 이야기를 낱낱이, 없으면 연재는 한 칸(펼치면 화 목록)으로 묶음
+let query = '';
+const openSeries = new Set();
+function listItems() {
+  const base = shownStories();
+  const q = query.trim().toLowerCase();
+  if (q) {
+    return base.filter((s) => [s.title, s.koTitle, s.author, s.source, srcLabel(s.source)]
+      .some((v) => v && v.toLowerCase().includes(q)));
+  }
+  const out = [];
+  const seen = new Map();
+  for (const s of base) {
+    if (!s.sr) { out.push(s); continue; }
+    let g = seen.get(s.sr);
+    if (!g) { g = { group: true, sr: s.sr, eps: [] }; seen.set(s.sr, g); out.push(g); }
+    g.eps.push(s);
+  }
+  // 한 화뿐인 묶음은 그냥 한 칸으로
+  return out.map((x) => (x.group && x.eps.length === 1 ? x.eps[0] : x));
+}
+function storyRow(s, label) {
+  const li = document.createElement('li');
+  const b = document.createElement('button');
+  b.className = 'pick';
+  b.setAttribute('aria-current', String(story?.id === s.id));
+  const pic = document.createElement('span'); pic.className = 's-pic'; pic.setAttribute('aria-hidden', 'true');
+  pic.textContent = s.emoji || '📖';
+  const ttl = document.createElement('span'); ttl.className = 's-title'; ttl.textContent = label || s.title;
+  const src = document.createElement('span'); src.className = 's-src';
+  // 연재의 한 화(label 있음)는 모음·작가를 되풀이하지 않고 길이만
+  src.textContent = label ? t('minutes', minutesOf(s)) : `${srcLabel(s.source)}${s.author ? ` · ${s.author}` : ''} · ${t('minutes', minutesOf(s))}`;
+  b.append(pic, ttl, src);
+  b.onclick = () => { selectStory(s.id); closeShelf(); };
+  const add = document.createElement('button');
+  add.className = 'add';
+  const inList = playlist.includes(s.id);
+  add.setAttribute('aria-pressed', String(inList));
+  add.setAttribute('aria-label', `${s.title} ${t(inList ? 'addAgain' : 'addOnce')}`);
+  add.textContent = inList ? '✓' : '＋';
+  add.onclick = () => addToList(s.id);
+  li.append(b, add);
+  return li;
+}
+function seriesRow(g) {
+  const first = g.eps[0];
+  const li = document.createElement('li');
+  li.className = 'series';
+  const isOpen = openSeries.has(g.sr) || g.eps.some((e) => e.id === story?.id);
+  const b = document.createElement('button');
+  b.className = 'pick';
+  b.setAttribute('aria-expanded', String(isOpen));
+  b.setAttribute('aria-current', String(g.eps.some((e) => e.id === story?.id)));
+  const pic = document.createElement('span'); pic.className = 's-pic'; pic.setAttribute('aria-hidden', 'true');
+  pic.textContent = first.emoji || '📚';
+  const ttl = document.createElement('span'); ttl.className = 's-title'; ttl.textContent = `${isOpen ? '▾' : '▸'} ${seriesTitle(first)}`;
+  const total = g.eps.reduce((a, e) => a + minutesOf(e), 0);
+  const src = document.createElement('span'); src.className = 's-src';
+  src.textContent = `${srcLabel(first.source)}${first.author ? ` · ${first.author}` : ''} · ${t('episodes', g.eps.length)} · ${t('minutes', total)}`;
+  b.append(pic, ttl, src);
+  b.onclick = () => {
+    if (openSeries.has(g.sr)) openSeries.delete(g.sr); else openSeries.add(g.sr);
+    renderStoryList();
+  };
+  // 연재 전체를 재생목록에 담기(1화부터 차례로)
+  const add = document.createElement('button');
+  add.className = 'add';
+  const allIn = g.eps.every((e) => playlist.includes(e.id));
+  add.setAttribute('aria-pressed', String(allIn));
+  add.setAttribute('aria-label', `${seriesTitle(first)} ${t('addSeries')}`);
+  add.textContent = allIn ? '✓' : '＋';
+  add.onclick = () => {
+    g.eps.filter((e) => !playlist.includes(e.id)).forEach((e) => playlist.push(e.id));
+    savePlaylist(); renderPlaylist(); renderStoryList();
+  };
+  li.append(b, add);
+  if (isOpen) {
+    const ul = document.createElement('ul');
+    ul.className = 'eps';
+    ul.append(...g.eps.map((e) => storyRow(e, e.lang === 'en' ? e.title : t('epLabel', e.ep))));
+    li.append(ul);
+  }
+  return li;
+}
 function renderStoryList() {
-  el.storyList.replaceChildren(...shownStories().map((s) => {
-    const li = document.createElement('li');
-    const b = document.createElement('button');
-    b.className = 'pick';
-    b.setAttribute('aria-current', String(story?.id === s.id));
-    const pic = document.createElement('span'); pic.className = 's-pic'; pic.setAttribute('aria-hidden', 'true');
-    pic.textContent = s.emoji || '📖';
-    const ttl = document.createElement('span'); ttl.className = 's-title'; ttl.textContent = s.title;
-    const src = document.createElement('span'); src.className = 's-src'; src.textContent = srcLabel(s.source);
-    b.append(pic, ttl, src);
-    b.onclick = () => { selectStory(s.id); closeShelf(); };
-    const add = document.createElement('button');
-    add.className = 'add';
-    const inList = playlist.includes(s.id);
-    add.setAttribute('aria-pressed', String(inList));
-    add.setAttribute('aria-label', `${s.title} ${t(inList ? 'addAgain' : 'addOnce')}`);
-    add.textContent = inList ? '✓' : '＋';
-    add.onclick = () => addToList(s.id);
-    li.append(b, add);
-    return li;
-  }));
+  el.storyList.replaceChildren(...listItems().map((x) => (x.group ? seriesRow(x) : storyRow(x))));
 }
 // 삽화: story.image(그린 그림)가 있으면 그것을, 없으면 배경 + 그림 장면(scene)을 그림
 function renderScene() {

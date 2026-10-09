@@ -13,8 +13,18 @@ export function buildIndex() {
     const r = { id: s.id, source: s.source, title: s.title, emoji: s.emoji, scene: s.scene, f: s._file };
     if (s.age) r.age = s.age;
     if (s.author) r.author = s.author;
+    // 연재: '삼국지 3화', '촛불의 과학 2강' → 같은 모음의 같은 제목끼리 묶음(sr), 몇 번째인지(ep)
+    const m = s.title.match(/^(.*\S)\s+(\d+)(화|강)$/);
+    if (m) { r.sr = `${s.source}|${m[1]}`; r.ep = Number(m[2]); }
+    // 길이 계산용: 읽는 글자 수(n)와 줄 수(l)
+    const texts = [s.title, ...s.lines.map((l) => l[1]).filter(Boolean), ...(s.outro || [])];
+    r.n = texts.reduce((a, t) => a + t.replace(/<[a-z]+>/g, '').length, 0);
+    r.l = texts.length;
     const en = EN[s.id];
-    if (en) r.en = { title: en.title, f: en._file };
+    if (en) {
+      const et = [en.title, ...en.lines.map((l) => l[1]), ...(en.outro || [])];
+      r.en = { title: en.title, f: en._file, w: et.join(' ').split(/\s+/).length, l: et.length };
+    }
     return r;
   });
   return '// 자동 생성: node tools/build-index.mjs (손으로 고치지 말 것)\n'

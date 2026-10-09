@@ -371,3 +371,11 @@ button { cursor: pointer; }
 .cover .age-tabs button[aria-pressed="true"] { color: #2a2f3d; background: #fffdf8; }
 .shelf .age-tabs { color: var(--ink); margin: 0 0 10px; }
 .shelf .age-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); }
+
+/* 이야기 찾기, 연재 묶음 */
+.search { width: 100%; box-sizing: border-box; margin: 0 0 8px; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 999px;
+  background: var(--sheet); color: var(--ink); font: inherit; font-size: 0.95rem; }
+.story-list li.series { flex-wrap: wrap; }
+.story-list ul.eps { list-style: none; margin: 2px 0 6px 18px; padding: 0; flex-basis: 100%; }
+.story-list ul.eps li { margin: 0; }
+.story-list ul.eps .s-title { font-size: 0.95em; }
