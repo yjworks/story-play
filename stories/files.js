@@ -5,7 +5,8 @@ export const KO_FILES = [
   'talmud.js', 'aesop.js', 'korean.js', 'english.js', 'grimm.js', 'andersen.js', 'perrault.js', 'world.js', 'gosa.js',
   'classics.js', 'serial-a.js', 'serial-b.js', 'gojeon.js', 'history.js', 'nature.js', 'yun.js',
   // 청소년(age: 'teen')
-  'teen-modern.js', 'teen-modern2.js', 'teen-a.js', 'teen-b.js', 'teen-c.js', 'teen-d.js', 'teen-e.js', 'teen-g.js', 'teen-h.js', 'teen-yusa.js',
+  'teen-modern.js', 'teen-modern2.js', 'teen-a.js', 'teen-b.js', 'teen-c.js', 'teen-d.js', 'teen-e.js', 'teen-f.js', 'teen-g.js', 'teen-h.js', 'teen-yusa.js',
+  'teen-sg1.js', 'teen-sg2.js', 'teen-ch.js',
 ];
 
 // 영어 원고(영문 모드). 키 = 이야기 id.
