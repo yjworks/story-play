@@ -24,13 +24,17 @@ for (const f of files) {
     if (seen.has(id)) E(`중복 (${seen.get(id)})`); seen.set(id, f);
     const k = ko[id];
     if (!k) { E('한국어 이야기에 없는 id'); continue; }
-    if (!s.title || s.title.length > 32) E('title 없음 또는 32자 초과');
-    if (s.outro?.length !== 3) E('outro 3줄');
+    // 청소년(age: 'teen') 원고는 중학생 이상 수준: 줄 수·문장 길이를 넉넉하게
+    const teen = k.age === 'teen';
+    const R = teen ? { title: 40, min: 16, max: 34, line: 20, outro: 25 } : { title: 32, min: 18, max: 24, line: 12, outro: 14 };
+    if (!s.title || s.title.length > R.title) E(`title 없음 또는 ${R.title}자 초과`);
+    const on = s.outro?.length || 0;
+    if (teen && k.prose ? on < 1 || on > 3 : on !== 3) E(`outro 줄 수 ${on}`);
     const n = s.lines?.length || 0;
-    if (n < 18 || n > 24) E(`줄 수 ${n} (18~24)`);
+    if (n < R.min || n > R.max) E(`줄 수 ${n} (${R.min}~${R.max})`);
     if (s.lines?.[0]?.[0] !== '해설') E('첫 줄은 해설');
-    // 본문 문장은 12단어, 마무리 질문은 14단어까지
-    const texts = [...(s.outro || []).map((t) => [t, 14]), ...(s.lines || []).map((l) => [l[1], 12])];
+    // 문장 길이(단어 수): 어린이 본문 12·질문 14, 청소년 본문 20·질문 25
+    const texts = [...(s.outro || []).map((t) => [t, R.outro]), ...(s.lines || []).map((l) => [l[1], R.line])];
     for (const [t, max] of texts) {
       if (!/[.!?]$/.test(t)) E(`끝 문장부호: ${t}`);
       if (/["<>]/.test(t)) E(`쓸 수 없는 문자: ${t}`);

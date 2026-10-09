@@ -1,6 +1,8 @@
 import { createTTS, VOICES } from './tts-client.js';
 import { INDEX } from './stories/index.js';
 const HAS_EN = INDEX.some((s) => s.en);
+// 청소년 영어 원고가 하나라도 있으면 영문 모드에서도 어린이/청소년을 고를 수 있음
+const HAS_TEEN_EN = INDEX.some((s) => s.en && s.age === 'teen');
 
 /* ---------- 진단 기록 (휴대폰에서도 원인을 볼 수 있게) ---------- */
 // [tts]·[player] 로그와 오류를 모아 두었다가, 상단 상태 문구를 누르면 보여 줌
@@ -36,6 +38,8 @@ const LANG_KEY = 'story-player:lang'; // 'ko' | 'en' (영문 모드: 영어 학�
 const BASE_SPEED = 0.93;
 // 영문 모드는 영어를 처음 배우는 아이용이라 한 번 더 천천히
 const EN_SPEED = 0.9;
+// 청소년 영어는 덜 천천히
+const EN_SPEED_TEEN = 0.95;
 // 목소리 나이: 음 높이(pitch)는 모델에 입력이 없어 재생 속도(playbackRate)로 올리고 내림.
 // 합성 빠르기를 pitch 로 나눠 두므로 말 빠르기는 그대로이고 음 높이만 바뀜(울림도 함께 올라가 아이 목소리처럼 들림).
 // ±12%를 넘으면 기계음이 나서 그 안에서만 씀. speed 는 인물 빠르기에 한 번 더 곱함.
@@ -72,7 +76,7 @@ const DEFAULT_OUTRO_EN = ['Did you like the story?', 'What part did you like bes
 // 화면 글자. 영문 모드에서는 모두 영어로(index.html 의 data-i18n* 속성 + 아래 t()).
 const UI = {
   ko: {
-    shelf: '📚 이야기 목록', app: '이야기 극장', toCover: '처음 표지로', ai: '🤖 AI 목소리', aiTitle: 'AI 목소리 안내',
+    shelf: '📚 이야기 목록', kids: '어린이', teens: '청소년', app: '이야기 극장', toCover: '처음 표지로', ai: '🤖 AI 목소리', aiTitle: 'AI 목소리 안내',
     langBtn: 'A English', langTitle: '영어로 바꾸기', coverLang: 'A 영어로 듣기',
     open: '📖 책 펼치기', close: '닫기', playlist: '재생목록', plPlay: '▶ 목록 재생', plClear: '비우기',
     plEmpty: '이야기 옆 ＋를 누르면 여기에 담겨요.', plAddShown: '아래 목록 모두 담기', choose: '이야기 고르기',
@@ -93,7 +97,7 @@ const UI = {
     repeatTitle: '반복 안 함: 재생목록을 끝까지 한 번 · 한 편 반복: 지금 이야기만 계속 · 목록 반복: 재생목록을 처음부터 다시',
   },
   en: {
-    shelf: '📚 Stories', app: 'Story Theater', toCover: 'Back to the cover', ai: '🤖 AI Voice', aiTitle: 'About the AI voice',
+    shelf: '📚 Stories', kids: 'Kids', teens: 'Teens', app: 'Story Theater', toCover: 'Back to the cover', ai: '🤖 AI Voice', aiTitle: 'About the AI voice',
     langBtn: '가 한국어', langTitle: 'Switch to Korean', coverLang: '가 한국어로 듣기',
     open: '📖 Open the Book', close: 'Close', playlist: 'Playlist', plPlay: '▶ Play list', plClear: 'Clear',
     plEmpty: 'Tap ＋ next to a story to add it here.', plAddShown: 'Add all stories below', choose: 'Choose a story',
@@ -120,6 +124,12 @@ const SRC_EN = {
   '그림 형제': 'Brothers Grimm', 안데르센: 'Andersen', 페로: 'Perrault', '세계 민담': 'World Tales', 고사성어: 'Chinese Fables',
   '명작 동화': 'Classic Tales', '명작 연재': 'Classic Series', '자연 관찰': 'Nature Notes', '우리 고전': 'Korean Classics',
   '신화와 역사': 'Myths & History', '세계 도시 탐방': 'World City Trips',
+  '근대 소설': 'Korean Modern Fiction', '근대 수필': 'Korean Modern Essays', '고전 산문': 'Korean Classical Prose',
+  '고전 수필': 'Korean Classical Essays', '수필·편지': 'Essays & Letters', '과학 고전': 'Science Classics',
+  '인문 고전': 'Humanities Classics', '삼국사기·삼국유사': 'Tales of the Three Kingdoms of Korea', '삼국지': 'Romance of the Three Kingdoms',
+  '초한지': 'The Chu–Han War', '조선왕조실록': 'Annals of the Joseon Dynasty', '세계 단편': 'World Short Stories',
+  '세계 장편': 'World Novels', '셰익스피어': 'Shakespeare', '연설과 기록': 'Speeches & Records',
+  '추리·괴기 명작': 'Mystery & Gothic Tales', '교양 강연': 'Talks',
 };
 const VOICE_LABEL_EN = {
   F1: 'Woman 1', F2: 'Woman 2', F3: 'Woman 3', F4: 'Woman 4', F5: 'Woman 5',
@@ -186,10 +196,14 @@ function loadLang() {
 }
 // 영문 모드: 영어 원고(stories/en/*.js)가 있는 이야기만, 제목·대사·질문을 영어로 바꿔 씀.
 // 인물(cast)은 한국어 이야기와 같은 객체를 써서 목소리 바꾸기가 두 모드에 함께 반영됨.
-// 독자: 'kid'(어린이, 기본) | 'teen'(청소년: age: 'teen' 인 이야기). 청소년 원고는 한국어만이라 영문 모드는 어린이만.
+// 독자: 'kid'(어린이, 기본) | 'teen'(청소년: age: 'teen' 인 이야기). 영문 모드는 청소년 영어 원고가 있을 때만 청소년을 고를 수 있음.
 // 목록은 색인(stories/index.js: 제목·모음·그림·파일 위치)만으로 만들고, 본문은 열 때 loadStory()로 받음
 function storiesFor(l, a = age) {
-  if (l === 'en') return INDEX.filter((s) => s.en).map((s) => ({ ...s, title: s.en.title, koTitle: s.title, lang: 'en' }));
+  if (l === 'en') {
+    const teen = a === 'teen' && HAS_TEEN_EN;
+    return INDEX.filter((s) => s.en && (s.age === 'teen') === teen)
+      .map((s) => ({ ...s, title: s.en.title, koTitle: s.title, lang: 'en' }));
+  }
   if (a === 'teen') return INDEX.filter((s) => s.age === 'teen');
   return [...INDEX.filter((s) => !s.age), ...loadUserStories()];
 }
@@ -215,7 +229,7 @@ async function loadStory(id) {
   return { ...ko, ...en, cast: ko.cast, lang: 'en', koTitle: ko.title };
 }
 // 재생목록·이어 읽기는 모드(언어·독자)마다 따로 저장
-const keyOf = (k) => (lang === 'en' ? `${k}:en` : age === 'teen' ? `${k}:teen` : k);
+const keyOf = (k) => (lang === 'en' ? (age === 'teen' && HAS_TEEN_EN ? `${k}:en:teen` : `${k}:en`) : age === 'teen' ? `${k}:teen` : k);
 const isEn = () => lang === 'en';
 function t(k, ...args) {
   const v = UI[lang][k] ?? UI.ko[k];
@@ -315,7 +329,7 @@ function cancelPending(from = -1) {
 function speechOf(c) {
   const a = ageOf(c);
   const speed = c.speed * BASE_SPEED * a.speed / a.pitch;
-  return story.lang === 'en' ? { lang: 'en', speed: speed * EN_SPEED } : { lang: 'ko', speed };
+  return story.lang === 'en' ? { lang: 'en', speed: speed * (story.age === 'teen' ? EN_SPEED_TEEN : EN_SPEED) } : { lang: 'ko', speed };
 }
 function audioFor(i) {
   const k = keyFor(i);
@@ -1190,9 +1204,9 @@ function renderLang() {
   const hasEn = HAS_EN; // 영어 원고가 없으면 버튼을 숨김
   $('langBtn').hidden = !hasEn;
   $('coverLang').hidden = !hasEn;
-  // 어린이/청소년 고르기: 청소년 원고는 한국어만이라 영문 모드에서는 숨김
+  // 어린이/청소년 고르기: 청소년 영어 원고가 없으면 영문 모드에서는 숨김
   for (const box of document.querySelectorAll('.age-tabs')) {
-    box.hidden = isEn();
+    box.hidden = isEn() && !HAS_TEEN_EN;
     for (const b of box.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.age === age));
   }
 }
