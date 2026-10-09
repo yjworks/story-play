@@ -1,5 +1,6 @@
 import { createTTS, VOICES } from './tts-client.js';
-import { STORIES, EN } from './stories.js';
+import { INDEX } from './stories/index.js';
+const HAS_EN = INDEX.some((s) => s.en);
 
 /* ---------- 진단 기록 (휴대폰에서도 원인을 볼 수 있게) ---------- */
 // [tts]·[player] 로그와 오류를 모아 두었다가, 상단 상태 문구를 누르면 보여 줌
@@ -157,16 +158,38 @@ function loadAge() {
   try { return localStorage.getItem(AGE_KEY) === 'teen' ? 'teen' : 'kid'; } catch (_) { return 'kid'; }
 }
 function loadLang() {
-  if (!Object.keys(EN).length) return 'ko';
+  if (!HAS_EN) return 'ko';
   try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ko'; } catch (_) { return 'ko'; }
 }
 // 영문 모드: 영어 원고(stories/en/*.js)가 있는 이야기만, 제목·대사·질문을 영어로 바꿔 씀.
 // 인물(cast)은 한국어 이야기와 같은 객체를 써서 목소리 바꾸기가 두 모드에 함께 반영됨.
 // 독자: 'kid'(어린이, 기본) | 'teen'(청소년: age: 'teen' 인 이야기). 청소년 원고는 한국어만이라 영문 모드는 어린이만.
+// 목록은 색인(stories/index.js: 제목·모음·그림·파일 위치)만으로 만들고, 본문은 열 때 loadStory()로 받음
 function storiesFor(l, a = age) {
-  if (l === 'en') return STORIES.filter((s) => EN[s.id]).map((s) => ({ ...s, ...EN[s.id], cast: s.cast, lang: 'en', koTitle: s.title }));
-  if (a === 'teen') return STORIES.filter((s) => s.age === 'teen');
-  return [...STORIES.filter((s) => !s.age), ...loadUserStories()];
+  if (l === 'en') return INDEX.filter((s) => s.en).map((s) => ({ ...s, title: s.en.title, koTitle: s.title, lang: 'en' }));
+  if (a === 'teen') return INDEX.filter((s) => s.age === 'teen');
+  return [...INDEX.filter((s) => !s.age), ...loadUserStories()];
+}
+// 이야기 파일 받기(파일 단위로 한 번만). 영문 모드는 영어 원고 파일도 받아 합침.
+// 인물(cast)은 한국어 이야기 객체의 것을 그대로 써서 목소리 바꾸기가 두 모드에 함께 반영됨
+const fileCache = new Map();
+function loadFile(f) {
+  if (!fileCache.has(f)) {
+    const p = import(`./stories/${f}`).then((m) => m.default);
+    p.catch(() => fileCache.delete(f)); // 실패하면 다음에 다시 시도
+    fileCache.set(f, p);
+  }
+  return fileCache.get(f);
+}
+async function loadStory(id) {
+  const meta = stories.find((s) => s.id === id);
+  if (!meta) return null;
+  if (meta.user) return meta;
+  const ko = (await loadFile(meta.f)).find((s) => s.id === id);
+  if (!ko) throw new Error(`이야기를 찾지 못함: ${id}`);
+  if (meta.lang !== 'en') return ko;
+  const en = (await loadFile(meta.en.f))[id];
+  return { ...ko, ...en, cast: ko.cast, lang: 'en', koTitle: ko.title };
 }
 // 재생목록·이어 읽기는 모드(언어·독자)마다 따로 저장
 const keyOf = (k) => (lang === 'en' ? `${k}:en` : age === 'teen' ? `${k}:teen` : k);
@@ -338,12 +361,11 @@ function nextStep() {
   if (mode === 'list' && playlist.length) return { id: playlist[0], pos: 0 };
   return null;
 }
-function playFromList(pos) {
+async function playFromList(pos) {
   if (!ready || !playlist[pos]) return;
   ensureCtx();
   closeShelf();
-  selectStory(playlist[pos], pos);
-  run(0);
+  if (await selectStory(playlist[pos], pos)) run(0);
 }
 function addToList(id) {
   playlist.push(id);
@@ -482,8 +504,7 @@ async function run(from) {
       el.hint.textContent = nx.id === story.id ? t('again') : t('nextStory');
       await wait(NEXT_STORY_MS);
       if (my !== runId) return;
-      selectStory(nx.id, nx.pos);
-      run(0);
+      if (await selectStory(nx.id, nx.pos)) run(0);
       return;
     }
     idx = 0;
@@ -887,11 +908,27 @@ document.addEventListener('visibilitychange', () => {
   console.info(`[player] 화면 ${document.visibilityState === 'visible' ? '돌아옴' : '가려짐(화면 끔·다른 앱)'}`);
   syncWakeLock();
 });
-function selectStory(id, pos = -1, { anim = true } = {}) {
-  if (anim && story && story.id !== id) { flip('book', () => selectStory(id, pos, { anim: false })); return; }
+// 이야기 열기: 본문 파일을 받은 뒤(처음 한 번만 네트워크) 화면을 바꿈. 빠르게 여러 번 눌러도 마지막 것만 반영
+let selectTok = 0;
+async function selectStory(id, pos = -1, { anim = true } = {}) {
+  const tok = ++selectTok;
+  let full;
+  try {
+    full = await loadStory(id);
+  } catch (e) {
+    console.error(e);
+    el.hint.textContent = isEn() ? 'Could not open the story. Check the network.' : '이야기를 받지 못했어요. 인터넷 연결을 확인해 주세요.';
+    return false;
+  }
+  if (tok !== selectTok || !full) return false;
+  if (anim && story && story.id !== id) { flip('book', () => showStory(full, pos)); return true; }
+  showStory(full, pos);
+  return true;
+}
+function showStory(full, pos) {
   pause();
   cancelPending();
-  story = stories.find((s) => s.id === id);
+  story = full;
   plPos = pos;
   seq = buildSeq();
   idx = 0;
@@ -1003,9 +1040,10 @@ function showCover() {
   cover.classList.remove('opening');
   cover.hidden = false;
 }
-function openBook(id, at = 0) {
+async function openBook(id, at = 0) {
   ensureCtx();
-  selectStory(id, -1, { anim: false });
+  // 본문을 받는 동안 표지를 그대로 두었다가 받은 뒤 펼침
+  if (!(await selectStory(id, -1, { anim: false }))) return;
   if (at > 0 && at < seq.length) {
     idx = at;
     showPage(pageOf[at]);
@@ -1028,7 +1066,7 @@ function renderLang() {
   applyUI();
   $('langBtn').setAttribute('aria-pressed', String(isEn()));
   el.openEditor.hidden = isEn(); // 내 이야기는 한국어 모드에서만
-  const hasEn = Object.keys(EN).length > 0; // 영어 원고가 없으면 버튼을 숨김
+  const hasEn = HAS_EN; // 영어 원고가 없으면 버튼을 숨김
   $('langBtn').hidden = !hasEn;
   $('coverLang').hidden = !hasEn;
   // 어린이/청소년 고르기: 청소년 원고는 한국어만이라 영문 모드에서는 숨김
@@ -1096,14 +1134,14 @@ function setStatus(msg) {
 }
 tts.load(setStatus)
   .then(async () => {
-    await tts.style(castOf(seq[0].who).voice);
+    if (story) await tts.style(castOf(seq[0].who).voice);
     ready = true;
     clearTimeout(statusTimer); statusTimer = 0;
     el.engine.textContent = t('ready', tts.backend, tts.source);
     note('▶', [`${el.engine.textContent}${tts.inWorker ? ' · 워커' : ' · 화면 스레드'}`]);
     // WebGPU가 없어 CPU(WASM)로 도는 기기는 합성이 느리므로 품질 기본값을 '빠르게'로
     if (tts.backend === 'WASM') el.steps.value = '5';
-    renderCast();
+    if (story) renderCast();
     renderPlaylist();
     renderPlayState();
     if (!playing) el.hint.textContent = t('tapHint');

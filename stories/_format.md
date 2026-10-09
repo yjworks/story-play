@@ -1,5 +1,7 @@
 # 이야기 파일 형식
 
+> 새 파일을 만들면 `stories/files.js`에 넣고 `node tools/build-index.mjs`로 색인(`stories/index.js`)을 다시 만든다. 앱은 색인만 먼저 받고, 이야기를 열 때 그 파일만 받는다. `node tools/check-stories.mjs`가 색인이 최신인지도 확인한다.
+
 한 모음 = `stories/<파일>.js` 하나. `export default [ {이야기}, ... ];`
 
 ```js
@@ -43,7 +45,7 @@
 - 영어 학습용(한국 초등 저학년, 영어 초급). `export default { '<이야기 id>': { title, names, outro, lines } }`
 - `lines`의 첫 칸은 한국어 이야기 `cast`의 이름 그대로(목소리를 함께 씀), `names`에 화면에 보일 영어 이름.
 - 이야기당 18~24줄, 문장은 되도록 8단어 이하(최대 12), 초급 낱말·단순 현재/과거, 되풀이 표현.
-- 새 파일은 `stories.js`의 `EN`에 합칠 것. 원고가 있는 이야기만 영문 모드 목록에 나옴.
+- 새 파일은 `stories/files.js`의 `EN_FILES`에 넣고 색인을 다시 만들 것. 원고가 있는 이야기만 영문 모드 목록에 나옴.
 
 ## 시 (poem: true, 예: stories/yun.js)
 - 원문 그대로 한 행 = `lines` 한 줄, 연 구분은 `['해설', '']`. 화면에서는 행마다 줄바꿈·가운데 정렬, 연이 바뀌면 조금 더 쉼.

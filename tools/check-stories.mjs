@@ -66,5 +66,11 @@ const bySrc = {};
 for (const s of list) bySrc[s.source] = (bySrc[s.source] || 0) + 1;
 console.log(`이야기 ${list.length}편`, bySrc);
 if (warn.length) console.log(`경고 ${warn.length}\n  ` + warn.join('\n  '));
+// 전체 검사일 때: 앱이 쓰는 색인(stories/index.js)이 최신인지도 확인
+if (!files.length) {
+  const { execFileSync } = await import('node:child_process');
+  try { execFileSync(process.execPath, [path.resolve('tools/build-index.mjs'), '--check'], { stdio: 'pipe' }); }
+  catch (_) { errs.push('stories/index.js 가 최신이 아님 → node tools/build-index.mjs'); }
+}
 if (errs.length) { console.log(`오류 ${errs.length}\n  ` + errs.join('\n  ')); process.exit(1); }
 console.log('통과');
