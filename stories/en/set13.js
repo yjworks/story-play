@@ -214,7 +214,7 @@ export default {
       ['해설', 'The little goat walked far, far away.'],
       ['아기염소', 'Where am I? Mom! Mom!'],
       ['해설', 'Then a wolf came out from behind a rock.'],
-      ['늑대', 'Ha ha! A little goat! Dinner for me!'],
+      ['늑대', 'Ha ha! A little goat! I got you!'],
       ['아기염소', 'Oh no! I am scared. But I must think.'],
       ['아기염소', 'Mr. Wolf, wait! I have one wish.'],
       ['늑대', 'A wish? What is it?'],
