@@ -24,7 +24,7 @@ for (const s of list) {
   if ([...(s.title || '')].length > 12) E(`title 12자 초과: ${s.title}`);
   if (!s.scene || !BGS.includes(s.scene.bg)) E(`scene.bg 잘못됨: ${s.scene?.bg}`);
   if (!Array.isArray(s.scene?.items) || s.scene.items.length < 2 || s.scene.items.length > 4) E('scene.items 2~4개');
-  if (!Array.isArray(s.outro) || s.outro.length !== 3) E('outro 3줄');
+  if (!Array.isArray(s.outro) || (s.outro.length !== 3 && !s.prose)) E('outro 3줄'); // 연재 원문의 중간 화는 1줄
   const cast = s.cast || {};
   if (!cast['해설']) E('해설 없음');
   const vs = Object.values(cast).map((c) => c.voice);
@@ -36,9 +36,10 @@ for (const s of list) {
   }
   const lines = s.lines || [];
   // 시(poem: true): 원문 그대로라 줄 수·문장부호·길이 규칙은 적용하지 않음. 빈 줄('')은 연 구분.
-  if (s.poem) {
-    if (lines.filter((l) => l[1]).length < 4) E('시 행이 너무 적음');
-    if (!lines[0]?.[1] || !lines.at(-1)?.[1]) E('시의 처음·끝에 빈 줄');
+  if (s.poem || s.prose) {
+    if (lines.filter((l) => l[1]).length < 4) E('행·문장이 너무 적음');
+    if (!lines[0]?.[1] || !lines.at(-1)?.[1]) E('처음·끝에 빈 줄');
+    if (!(s.outro || []).length) E('outro 없음');
     for (const q of s.outro || []) if (!/[.!?]$/.test(q)) E(`outro 끝 문장부호: ${q}`);
     continue;
   }

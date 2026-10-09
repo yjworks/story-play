@@ -29,6 +29,7 @@ const REPEAT_KEY = 'story-player:repeat';
 const PLAYLIST_KEY = 'story-player:playlist';
 const FILTER_KEY = 'story-player:filter';
 const LAST_KEY = 'story-player:last'; // 이어 읽기: { id, idx }
+const AGE_KEY = 'story-player:age'; // 'kid' | 'teen'
 const LANG_KEY = 'story-player:lang'; // 'ko' | 'en' (영문 모드: 영어 학습용 원고가 있는 이야기만)
 // 전체 빠르기: 인물마다 정한 빠르기에 곱함(아이가 따라오기 쉽게 조금 천천히)
 const BASE_SPEED = 0.93;
@@ -43,6 +44,7 @@ const NARRATION_PER_PARA = 3; // 해설 문장을 한 문단에 몇 개까지 �
 const GAP_MS = 500; // 문장 사이 쉼
 const THINK_MS = 7000; // 질문 뒤 아이가 생각할 시간
 const STANZA_MS = 600; // 시에서 연이 바뀔 때 더 쉬는 시간
+const PARA_MS = 300; // 원문 산문에서 문단이 바뀔 때 더 쉬는 시간
 const NEXT_STORY_MS = 1500; // 반복·이어 듣기에서 다음 이야기 전 쉼
 const DEFAULT_OUTRO = ['이야기 잘 들었나요?', '이야기에서 가장 기억에 남는 장면은 무엇인가요? 왜 그런가요?'];
 const DEFAULT_OUTRO_EN = ['Did you like the story?', 'What part did you like best?'];
@@ -62,7 +64,7 @@ const UI = {
     nextStory: '다음 이야기로 넘어갈게요.', end: '끝! 다시 들으려면 재생을 눌러 주세요.', pic: '그림', voiceOf: '목소리',
     hear: '들어보기', think: '생각해 볼까요?', cover: '표지', page: (a, b) => `${a} / ${b} 쪽`,
     tapHint: '재생을 누르거나, 듣고 싶은 문장을 눌러 주세요.', readFirst: '목소리를 준비하는 동안 먼저 읽어 보세요.',
-    coverSub: (n) => `이야기 ${n}편을 인물마다 다른 목소리로 들려줘요`, resume: (t) => `▶ 이어 읽기 · ${t}`,
+    coverSub: (n) => (age === 'teen' ? `청소년 읽을거리 ${n}편 · 근대 소설 원문과 세계 명작을 목소리로` : `이야기 ${n}편을 인물마다 다른 목소리로 들려줘요`), resume: (t) => `▶ 이어 읽기 · ${t}`,
     ready: (b, s) => `준비 완료 (${b} · ${s})`, synthFail: (m) => `음성을 만들지 못했어요: ${m}`,
     loadFail: '음성 엔진을 불러오지 못했어요 (모델 파일을 받지 못함)', loadFailMsg: (m) => `음성 엔진을 불러오지 못했어요: ${m}`,
     cast: '등장인물', pages: '쪽 넘기기', controls: '재생 조작', loading: '음성 엔진 불러오는 중',
@@ -130,6 +132,7 @@ const tts = await createTTS();
 try { navigator.storage?.persist?.(); } catch (_) { /* unsupported */ }
 let ready = false;
 let lang = loadLang();
+let age = loadAge();
 let stories = storiesFor(lang);
 let story = null;
 let playlist = loadPlaylist(); // 재생목록: 이야기 id 배열 (같은 이야기를 여러 번 담아도 됨)
@@ -150,18 +153,23 @@ let source = null;
 const audioCache = new Map();
 
 /* ---------- 언어 (한국어 / 영문 학습 모드) ---------- */
+function loadAge() {
+  try { return localStorage.getItem(AGE_KEY) === 'teen' ? 'teen' : 'kid'; } catch (_) { return 'kid'; }
+}
 function loadLang() {
   if (!Object.keys(EN).length) return 'ko';
   try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ko'; } catch (_) { return 'ko'; }
 }
 // 영문 모드: 영어 원고(stories/en/*.js)가 있는 이야기만, 제목·대사·질문을 영어로 바꿔 씀.
 // 인물(cast)은 한국어 이야기와 같은 객체를 써서 목소리 바꾸기가 두 모드에 함께 반영됨.
-function storiesFor(l) {
-  if (l !== 'en') return [...STORIES, ...loadUserStories()];
-  return STORIES.filter((s) => EN[s.id]).map((s) => ({ ...s, ...EN[s.id], cast: s.cast, lang: 'en', koTitle: s.title }));
+// 독자: 'kid'(어린이, 기본) | 'teen'(청소년: age: 'teen' 인 이야기). 청소년 원고는 한국어만이라 영문 모드는 어린이만.
+function storiesFor(l, a = age) {
+  if (l === 'en') return STORIES.filter((s) => EN[s.id]).map((s) => ({ ...s, ...EN[s.id], cast: s.cast, lang: 'en', koTitle: s.title }));
+  if (a === 'teen') return STORIES.filter((s) => s.age === 'teen');
+  return [...STORIES.filter((s) => !s.age), ...loadUserStories()];
 }
-// 재생목록·이어 읽기는 모드마다 따로 저장
-const keyOf = (k) => (lang === 'en' ? `${k}:en` : k);
+// 재생목록·이어 읽기는 모드(언어·독자)마다 따로 저장
+const keyOf = (k) => (lang === 'en' ? `${k}:en` : age === 'teen' ? `${k}:teen` : k);
 const isEn = () => lang === 'en';
 function t(k, ...args) {
   const v = UI[lang][k] ?? UI.ko[k];
@@ -462,7 +470,7 @@ async function run(from) {
     const waited = performance.now() - t0;
     if (waited > 50) console.info(`[player] ${idx + 1}번째 문장 대기 ${(waited / 1000).toFixed(2)}s (끊김)`);
     // 쉼: 질문 뒤 생각할 시간 / 시의 연이 바뀔 때는 조금 더
-    await playPCM(pcm, seq[idx].q ? THINK_MS : GAP_MS + (seq[idx + 1]?.stanza ? STANZA_MS : 0));
+    await playPCM(pcm, seq[idx].q ? THINK_MS : GAP_MS + (seq[idx + 1]?.stanza ? (story.prose ? PARA_MS : STANZA_MS) : 0));
     if (my !== runId) return;
     idx += 1;
   }
@@ -633,6 +641,19 @@ function renderBook() {
       askBox.append(s);
       return;
     }
+    // 원문 산문: 원래 문단 그대로(빈 줄 = 문단 바꿈), 문장은 이어 씀. 대사도 해설 목소리로 원문대로.
+    if (story.prose) {
+      if (!para || stanza) {
+        para = document.createElement('p');
+        para.className = 'prose';
+        units.push({ node: para, first: i, ask: false });
+      } else {
+        para.append(' ');
+      }
+      s.textContent = shown(text);
+      para.append(s);
+      return;
+    }
     // 시: 한 연 = 한 문단, 행마다 줄바꿈. 표기는 원문 그대로.
     if (story.poem) {
       if (!para || stanza) {
@@ -696,16 +717,32 @@ function paginate(keepIdx = 0) {
     if (afterCover) { newPage(); afterCover = false; }
     if (u.ask && pg.childElementCount) newPage();
     pg.append(u.node);
-    if (pg.offsetHeight > cap && pg.childElementCount > 1) {
+    if (pg.offsetHeight > cap && pg.childElementCount > 1 && !u.node.classList.contains('prose')) {
       u.node.remove();
       newPage();
       pg.append(u.node);
     }
+    // 원문 산문의 긴 문단: 쪽 끝에서 문장 단위로 잘라 다음 쪽에 이어 씀(빈칸 없이 채움)
+    let node = u.node;
+    while (node.classList.contains('prose') && pg.offsetHeight > cap) {
+      const cont = node.cloneNode(false);
+      cont.classList.add('cont');
+      while (pg.offsetHeight > cap && node.childNodes.length) cont.prepend(node.lastChild);
+      // 문장이 하나도 안 남았으면 문단을 통째로 다음 쪽으로
+      if (!node.querySelector('.sent')) { while (cont.firstChild && !cont.firstChild.classList?.contains('sent')) cont.firstChild.remove(); cont.prepend(...node.childNodes); cont.classList.toggle('cont', node.classList.contains('cont')); node.remove(); }
+      if (!cont.querySelector('.sent')) break;
+      while (cont.firstChild && cont.firstChild.nodeType === 3) cont.firstChild.remove(); // 앞 공백
+      newPage();
+      pg.append(cont);
+      node = cont;
+      if (pg.childElementCount === 1 && pg.offsetHeight > cap && cont.querySelectorAll('.sent').length === 1) break;
+    }
     u.page = pages.length - 1;
   });
-  units.forEach((u, k) => {
-    const end = k + 1 < units.length ? units[k + 1].first : seq.length;
-    for (let i = u.first; i < end; i++) pageOf[i] = u.page;
+  // 문장 → 쪽: 문장이 실제로 놓인 쪽(문단이 쪽을 넘어갈 수 있어서 문장마다 찾음). 제목은 표지(0쪽)
+  sents.forEach((n, i) => {
+    const pgEl = n.closest('.pg');
+    pageOf[i] = pgEl ? pages.indexOf(pgEl) : 0;
   });
   showPage(pageOf[keepIdx] ?? 0);
   // 책 높이를 화면(재생바 위까지)에 맞춰 고정 → 쪽마다 버튼 위치가 같음
@@ -859,7 +896,7 @@ function selectStory(id, pos = -1, { anim = true } = {}) {
   seq = buildSeq();
   idx = 0;
   el.storyTitle.textContent = story.title;
-  el.storySource.textContent = srcLabel(story.source);
+  el.storySource.textContent = story.author ? `${srcLabel(story.source)} · ${story.author}` : srcLabel(story.source);
   el.page.style.setProperty('--cv', COVER_COLORS[Math.max(0, sources().indexOf(story.source)) % COVER_COLORS.length]);
   renderFilter();
   renderStoryList();
@@ -994,13 +1031,28 @@ function renderLang() {
   const hasEn = Object.keys(EN).length > 0; // 영어 원고가 없으면 버튼을 숨김
   $('langBtn').hidden = !hasEn;
   $('coverLang').hidden = !hasEn;
+  // 어린이/청소년 고르기: 청소년 원고는 한국어만이라 영문 모드에서는 숨김
+  for (const box of document.querySelectorAll('.age-tabs')) {
+    box.hidden = isEn();
+    for (const b of box.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.age === age));
+  }
 }
 function setLang(l) {
   if (l === lang) return;
-  pause();
   lang = l;
   try { localStorage.setItem(LANG_KEY, l); } catch (_) { /* ignore */ }
-  stories = storiesFor(l);
+  switchShelf();
+}
+function setAge(a) {
+  if (a === age) return;
+  age = a;
+  try { localStorage.setItem(AGE_KEY, a); } catch (_) { /* ignore */ }
+  switchShelf();
+}
+// 언어·독자가 바뀌면 책장(이야기 목록)을 통째로 바꿈
+function switchShelf() {
+  pause();
+  stories = storiesFor(lang);
   playlist = loadPlaylist();
   plPos = -1;
   renderLang();
@@ -1012,6 +1064,7 @@ function setLang(l) {
 }
 $('langBtn').onclick = () => setLang(isEn() ? 'ko' : 'en');
 $('coverLang').onclick = () => setLang(isEn() ? 'ko' : 'en');
+for (const b of document.querySelectorAll('.age-tabs button')) b.onclick = () => setAge(b.dataset.age);
 renderLang();
 $('homeTitle').onclick = showCover;
 $('homeTitle').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showCover(); } };

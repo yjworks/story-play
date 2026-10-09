@@ -188,6 +188,8 @@ button { cursor: pointer; }
 .book p { margin: 0 0 0.7em; }
 .book p.talk { padding-left: 0.6em; }
 /* 시: 가운데 정렬, 행 간격 넉넉히, 연 사이 띄움 */
+.book p.prose { text-indent: 1em; line-height: 1.85; }
+.book p.prose.cont { text-indent: 0; } /* 앞 쪽에서 이어지는 문단 */
 .book p.verse { text-align: center; line-height: 1.9; margin: 0 0 1.2em; }
 .sent {
   cursor: pointer; border-radius: 8px; padding: 2px 3px;
@@ -358,3 +360,14 @@ button { cursor: pointer; }
 .book .pg { animation: none; } /* 쪽 넘김은 flip 효과가 맡음 */
 .engine, .cover-engine { cursor: pointer; }
 .engine.has-detail { text-decoration: underline dotted; }
+
+/* 어린이 / 청소년 고르기 */
+.age-tabs { display: inline-flex; gap: 0; border-radius: 999px; overflow: hidden; border: 1.5px solid currentColor; margin: 4px auto 10px; }
+.age-tabs[hidden] { display: none; }
+.age-tabs button { border: 0; background: transparent; color: inherit; padding: 6px 16px; font: inherit; font-size: 0.95rem; }
+.age-tabs button[aria-pressed="true"] { background: currentColor; }
+.age-tabs button[aria-pressed="true"] { color: var(--sheet, #fff); }
+.cover .age-tabs { color: #fffdf8; }
+.cover .age-tabs button[aria-pressed="true"] { color: #2a2f3d; background: #fffdf8; }
+.shelf .age-tabs { color: var(--ink); margin: 0 0 10px; }
+.shelf .age-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); }
