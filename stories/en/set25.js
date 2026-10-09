@@ -6,7 +6,7 @@ export default {
     names: { 해설: 'Narrator', 아버지: 'Father', 막내딸: 'Little Sister', 샛별: 'Morning Star', 난쟁이: 'Dwarf', 까마귀: 'Raven' },
     outro: [
       'Did you like the story?',
-      'If you were the sister, how would you feel at the sun and moon?',
+      'If you were the sister, how would you feel meeting the sun and moon?',
       'When were you brave for your family?',
     ],
     lines: [

@@ -295,7 +295,7 @@ export default {
       ['해설', 'One year, there was no rice in the village.'],
       ['백성', 'We have no rice. Our children are hungry.'],
       ['우치', 'Hmm. I have a good idea!'],
-      ['해설', 'Woochi dressed like a man from the sky and flew to the palace.'],
+      ['해설', 'Woochi dressed like a sky spirit. He flew to the palace.'],
       ['우치', 'King, the King of the Sky wants a golden beam.'],
       ['임금', 'The King of the Sky? Make a golden beam now!'],
       ['해설', 'Woochi took the gold and flew away. Whoosh!'],
