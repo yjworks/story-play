@@ -6,7 +6,7 @@ export const KO_FILES = [
   'classics.js', 'serial-a.js', 'serial-b.js', 'gojeon.js', 'history.js', 'nature.js',
   // 청소년(age: 'teen')
   'teen-modern.js', 'teen-modern2.js', 'teen-a.js', 'teen-b.js', 'teen-c.js', 'teen-d.js', 'teen-e.js', 'teen-f.js', 'teen-g.js', 'teen-human2.js', 'teen-h.js', 'teen-yusa.js',
-  'teen-sg1.js', 'teen-sg2.js', 'teen-ch.js', 'teen-sagi.js', 'teen-sillok1.js', 'teen-sillok2.js', 'teen-essay-modern.js', 'teen-essay.js', 'teen-speech.js', 'teen-lesmis.js', 'teen-80days.js', 'teen-nautilus.js', 'teen-pride.js', 'teen-twocities.js', 'teen-eyre.js', 'teen-quixote.js', 'teen-monte.js', 'teen-frank.js', 'teen-expect.js', 'teen-women.js', 'teen-ws1.js', 'teen-ws2.js', 'teen-ws3.js', 'teen-ws4.js', 'teen-ws5.js', 'teen-holmes2.js', 'teen-mystery2.js', 'teen-shake2.js', 'teen-shake3.js',
+  'teen-sg1.js', 'teen-sg2.js', 'teen-ch.js', 'teen-sagi.js', 'teen-sillok1.js', 'teen-sillok2.js', 'teen-essay-modern.js', 'teen-essay.js', 'teen-speech.js', 'teen-lesmis.js', 'teen-80days.js', 'teen-nautilus.js', 'teen-pride.js', 'teen-twocities.js', 'teen-eyre.js', 'teen-quixote.js', 'teen-monte.js', 'teen-frank.js', 'teen-expect.js', 'teen-women.js', 'teen-talk1.js', 'teen-ws1.js', 'teen-ws2.js', 'teen-ws3.js', 'teen-ws4.js', 'teen-ws5.js', 'teen-holmes2.js', 'teen-mystery2.js', 'teen-shake2.js', 'teen-shake3.js',
 ];
 
 // 영어 원고(영문 모드). 키 = 이야기 id.
