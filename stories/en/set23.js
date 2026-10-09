@@ -221,7 +221,7 @@ export default {
       ['안내인', 'The word ciao first came from old Venice.'],
       ['안내인', 'About fifteen hundred years ago, people moved to these islands.'],
       ['안내인', 'Later, Venice chose its own leader, called the Doge.'],
-      ['해설', 'The Republic of Venice lasted about one thousand years.'],
+      ['해설', 'The Republic of Venice lasted more than a thousand years.'],
       ['안내인', 'Venice traded with far countries by ship and grew rich.'],
       ['줄리아', 'Marco Polo was from Venice! He traveled to Asia.'],
       ['안내인', 'In 1797, the republic ended. Later, Venice joined Italy.'],
@@ -232,7 +232,7 @@ export default {
       ['안내인', 'Third, the Doge’s Palace. The Doge lived and ruled there.'],
       ['하나', 'The whole city looks like a museum on water!'],
       ['해설', 'Venice is a city built on islands in Italy.'],
-      ['해설', 'Its republic grew rich by sea trade for about a thousand years.'],
+      ['해설', 'Its republic grew rich by sea trade for over a thousand years.'],
     ],
   },
 
