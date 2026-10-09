@@ -109,7 +109,7 @@ export default {
     outro: [
       'Was the Bangkok food trip yummy?',
       'What did people first do with water at Songkran?',
-      'Who would you wish good luck at New Year?',
+      'Who would you wish good luck to at New Year?',
     ],
     lines: [
       ['해설', 'Last time, Hana saw temples in Bangkok. Today, she eats!'],
@@ -165,7 +165,7 @@ export default {
       ['안내인', 'Its long walls are made of red stone.'],
       ['해설', 'Next is the Qutub Minar, a very tall tower.'],
       ['해설', 'Then we see India Gate, a big stone arch.'],
-      ['안내인', 'It honors Indian soldiers who died in wars.'],
+      ['안내인', 'It honors Indian soldiers from long-ago wars.'],
       ['해설', 'Delhi has many layers of history by the Yamuna River.'],
     ],
   },

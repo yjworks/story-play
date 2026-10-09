@@ -154,7 +154,7 @@ export default {
       ['루카', 'Ciao! I am Luca. I live in Rome.'],
       ['루카', 'Ciao means hi and bye between friends.'],
       ['안내인', 'A legend says twin brothers started Rome.'],
-      ['안내인', 'Rome grew into a huge land around the Mediterranean Sea.'],
+      ['안내인', 'Rome grew big. It ruled lands around the Mediterranean Sea.'],
       ['해설', 'Romans built strong roads and long bridges for water.'],
       ['안내인', 'About two thousand years ago, they built the Colosseum.'],
       ['안내인', 'Later, Rome became the center of the Catholic Church.'],

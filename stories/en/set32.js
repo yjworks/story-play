@@ -38,7 +38,7 @@ export default {
     names: { 해설: 'Narrator', 선생님: 'Teacher', 제자: 'Student' },
     outro: [
       'Was the story fun?',
-      'What would you say to the first question?',
+      'How would you answer the first question?',
       'Do you look at yourself before you look at others?',
     ],
     lines: [
@@ -72,7 +72,7 @@ export default {
     outro: [
       'Did you enjoy the story?',
       'If you were the Teacher, would you give the jewel back?',
-      'What do you do when you find something?',
+      'What do you do when you find something that is not yours?',
     ],
     lines: [
       ['해설', 'Once upon a time, there was a good teacher.'],
@@ -80,7 +80,7 @@ export default {
       ['제자', 'Teacher, we will buy you a donkey!'],
       ['선생님', 'Thank you. Now I can study more.'],
       ['해설', 'The students washed the donkey in the river. Splash!'],
-      ['해설', 'Then something shined on its neck.'],
+      ['해설', 'Then something was shining on its neck.'],
       ['제자', 'Look! A big jewel!'],
       ['제자', 'Teacher, now you do not need to work!'],
       ['선생님', 'Did the seller know about the jewel?'],
@@ -280,7 +280,7 @@ export default {
       ['나그네', 'Cool shade? You have it.'],
       ['나그네', 'Fresh water? You have it, too.'],
       ['낙타', 'Then what will you wish?'],
-      ['나그네', 'I wish your seeds grow into trees like you.'],
+      ['나그네', 'I hope your seeds grow into trees like you.'],
       ['나그네', 'Then other travelers can rest, too.'],
       ['해설', 'The leaves moved in the wind. Swish, swish.'],
       ['해설', 'Say thank you, and wish good things for others.'],
@@ -330,7 +330,7 @@ export default {
       ['해설', 'A long snake lived in the forest.'],
       ['해설', 'The head always went first. The tail followed.'],
       ['꼬리', 'Why do you always go first, Head?'],
-      ['머리', 'I have eyes and ears. I can see the way.'],
+      ['머리', 'I have eyes to see the way. My tongue can smell, too.'],
       ['꼬리', 'That is not fair! Today I will go first!'],
       ['머리', 'Okay. Just for today.'],
       ['꼬리', 'Yay! I am the leader now!'],
