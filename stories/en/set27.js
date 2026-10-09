@@ -328,7 +328,7 @@ export default {
       ['해설', 'But he always spits it out, and it shines again.'],
       ['불개', 'The sun is too hot. The moon is too cold!'],
       ['임금', 'Ha ha. The sun and moon belong in the sky.'],
-      ['해설', 'Now we know: the sun, moon, and Earth line up.'],
+      ['해설', 'Really, it happens when the sun, moon, and Earth line up.'],
       ['해설', 'Things for everyone should not be taken by one.'],
     ],
   },
