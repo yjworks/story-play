@@ -99,7 +99,7 @@ export default [
   {
     id: 'ct-gyeongju-1',
     source: '세계 도시 탐방',
-    emoji: '🛕',
+    emoji: '⭐',
     title: '경주 탐방 1화',
     scene: { bg: 'palace', items: ['🏯', '⛰️', '🌸'] },
     outro: [
@@ -387,7 +387,7 @@ export default [
   {
     id: 'ct-beijing-1',
     source: '세계 도시 탐방',
-    emoji: '🏯',
+    emoji: '🐉',
     title: '베이징 탐방 1화',
     scene: { bg: 'palace', items: ['🏯', '⛰️', '🐉'] },
     outro: [
